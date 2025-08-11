@@ -1,0 +1,14 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# 步骤1: 生成30个随机浮点型数据，范围在20到50之间
+data = np.random.uniform(20, 50, 30)
+
+# 步骤2: 可视化展示这些数据
+plt.figure(figsize=(10, 6))
+plt.plot(data, marker='o', linestyle='-', color='b')
+plt.title('Random Float Data Visualization')
+plt.xlabel('Index')
+plt.ylabel('Random Float Value')
+plt.grid()
+plt.show()

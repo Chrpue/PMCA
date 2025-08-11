@@ -1,0 +1,20 @@
+import pandas as pd
+
+# 读取Excel文件，指定第三行为表头
+file_path = '/home/chrpue/projects/PMCA/documents/监督中心台账.xlsx'
+df = pd.read_excel(file_path, header=2)
+
+# 输出所有列的标题名称
+print("所有列的标题名称:")
+print(df.columns.tolist())
+
+# 查找“是否突出问题”列的位置
+if "是否突出问题" in df.columns:
+    # 筛选出“是否突出问题”列中值为“是”的所有行
+    filtered_df = df[df["是否突出问题"] == "是"]
+    
+    # 打印筛选结果
+    print("\n“是否突出问题”列值为“是”的所有行:")
+    print(filtered_df)
+else:
+    print("\n“是否突出问题”列未找到。请检查列名是否正确。")

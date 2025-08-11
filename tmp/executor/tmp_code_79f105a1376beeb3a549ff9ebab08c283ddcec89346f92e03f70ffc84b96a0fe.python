@@ -1,0 +1,32 @@
+import pandas as pd
+
+# 读取Excel文件的前两行和第三行
+file_path = '/home/chrpue/projects/PMCA/documents/监督中心台账.xlsx'
+df = pd.read_excel(file_path, nrows=3)
+
+# 处理合并单元格的问题
+# 假设第三行的列名在L列（即第12列）
+merged_cell_value = df.iloc[1, 11]  # 获取L列第二行的值
+df.iloc[2, 11] = merged_cell_value  # 将L列第三行的值设置为与第二行相同
+
+# 使用第三行为表头
+df.columns = df.iloc[2]
+df = df.drop([0, 1, 2])  # 删除前两行和第三行，只保留实际数据
+
+# 重置索引
+df.reset_index(drop=True, inplace=True)
+
+# 输出所有列的标题名称
+print("所有列的标题名称:")
+print(df.columns.tolist())
+
+# 查找“是否突出问题”列的位置
+if "是否突出问题" in df.columns:
+    # 筛选出“是否突出问题”列中值为“是”的所有行
+    filtered_df = df[df["是否突出问题"] == "是"]
+    
+    # 打印筛选结果
+    print("\n“是否突出问题”列值为“是”的所有行:")
+    print(filtered_df)
+else:
+    print("\n“是否突出问题”列未找到。请检查列名是否正确。")

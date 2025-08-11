@@ -1,0 +1,23 @@
+import pandas as pd
+
+# 文件路径
+file_path = '/home/chrpue/projects/PMCA/documents/监督中心台账.xlsx'
+
+# 读取Excel文件
+try:
+    df = pd.read_excel(file_path)
+except FileNotFoundError:
+    print("文件未找到，请检查文件路径是否正确。")
+    exit(1)
+except Exception as e:
+    print(f"读取文件时发生错误: {e}")
+    exit(1)
+
+# 筛选出“是否突出问题”列为“是”的所有行
+filtered_df = df[df['是否突出问题'].str.strip().lower() == '是']
+
+# 输出结果
+if not filtered_df.empty:
+    print(filtered_df.to_string(index=False))
+else:
+    print("没有找到符合条件的行。")

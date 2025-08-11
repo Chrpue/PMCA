@@ -1,0 +1,294 @@
+from autogen_agentchat.conditions import (
+    ExternalTermination,
+    MaxMessageTermination,
+    TextMentionTermination,
+)
+from loguru import logger
+from typing import List, Dict, Any
+from autogen_agentchat.agents import (
+    MessageFilterAgent,
+    MessageFilterConfig,
+    PerSourceFilter,
+)
+from autogen_agentchat.teams import DiGraphBuilder, GraphFlow
+from autogen_agentchat.ui import Console
+from autogen_agentchat.messages import StructuredMessage
+from autogen_core.tools import StaticWorkbench, ToolResult, ToolSchema
+
+from base.agents.special_agents import PMCADecision, PMCAUser
+
+from base.team.factory import TeamFeedBack
+from base.team import PMCASwarm
+
+from base.agents.special_agents import DecisionResponse
+from entry.team_boostrap_proxy import TeamBootstrapProxy
+from entry.decision_reviewer_proxy import DecisionReviewerProxy
+
+
+class APPWorkbench(StaticWorkbench):
+    """Light-Weight key-value workbench with no additional tools."""
+
+    def __init__(self) -> None:
+        super().__init__(tools=[])
+        self._kv: dict[str, Any] = {}
+
+    async def set_item(self, key: str, value: Any) -> None:
+        self._kv[key] = value
+
+    async def get_item(self, key: str) -> Any:
+        return self._kv.get(key)
+
+    async def list_tools(self) -> List[ToolSchema]:
+        return []
+
+    async def call_tool(
+        self,
+        name: str,
+        arguments: Dict[str, Any],
+        call_id: str | None = None,
+        caller=None,
+        message=None,
+        **kwargs,
+    ) -> ToolResult:
+        raise RuntimeError("在Workbench中没有可用的工具")
+
+
+class PMCAEntryGraph:
+    """构建ENTRY工作流"""
+
+    @staticmethod
+    def graph_termination():
+        return (
+            ExternalTermination()
+            | MaxMessageTermination(max_messages=80)
+            | TextMentionTermination(
+                TeamFeedBack.GRAPHFINISHED, sources="PMCAGraphFinished"
+            )
+        )
+
+    @staticmethod
+    def team_finished(msg):
+        # logger.error(f"团队结束: {TeamFeedBack.FINISHED in msg.content}")
+        return TeamFeedBack.FINISHED in msg.content
+
+    @staticmethod
+    def need_user_input(msg):
+        return TeamFeedBack.NEEDUSER in msg.content
+
+    @staticmethod
+    def need_decision(msg, wb) -> bool:
+        return (
+            TeamFeedBack.QUIT not in msg.content.upper() and "team_state" not in wb._kv
+        )
+
+    @staticmethod
+    def team_resume(msg, wb) -> bool:
+        state = (
+            msg.source.startswith("PMCAUserProxy")
+            and "team_state" in wb._kv
+            and wb._kv.get("team_state") is not None
+        )
+        # logger.error(f"团队中止:{state}")
+        return state
+
+    @staticmethod
+    def activate_finished(msg, wb):
+        return (
+            TeamFeedBack.QUIT in msg.content.upper()
+            and "team_state" in wb._kv
+            and wb._kv.get("team_state") is not None
+        )
+
+    @staticmethod
+    def reactive_finished(msg, wb) -> bool:
+        return (
+            TeamFeedBack.FINISHED in msg.content.upper()
+            and "team_state" in wb._kv
+            and wb._kv.get("team_state") is not None
+        )
+
+    @staticmethod
+    async def begin(cfg, llm_cfg):
+        """Entry"""
+
+        await PMCADecision.obtain_agents_duties(cfg)
+        (
+            team_decision,
+            team_decision_critic,
+        ) = await PMCADecision.obtain_team_decision_components(cfg, llm_cfg)
+        (
+            agents_decision,
+            agents_decision_critic,
+        ) = await PMCADecision.obtain_agents_decision_components(cfg, llm_cfg)
+        decision_reviewer = await PMCADecision.obtain_decision_reviewer_components(
+            cfg, llm_cfg
+        )
+
+        finished = cfg.factory.create_agent("PMCAGraphFinished")
+        user_proxy = PMCAUser().agent
+
+        # 包装批评代理，确保按照指定消息流触发
+        filter_team_decision_critic = MessageFilterAgent(
+            name="PMCATeamDecisionCritic",
+            wrapped_agent=team_decision_critic,
+            filter=MessageFilterConfig(
+                per_source=[
+                    PerSourceFilter(source="PMCAUserProxy", position=None, count=1),
+                    PerSourceFilter(
+                        source="PMCATeamDecision", position="last", count=1
+                    ),
+                ]
+            ),
+        )
+        filter_agents_decision_critic = MessageFilterAgent(
+            name="PMCAAgentsDecisionCritic",
+            wrapped_agent=agents_decision_critic,
+            filter=MessageFilterConfig(
+                per_source=[
+                    PerSourceFilter(source="PMCAUserProxy", position=None, count=1),
+                    PerSourceFilter(
+                        source="PMCAAgentsDecision", position="last", count=1
+                    ),
+                ]
+            ),
+        )
+        # 包装决策代理，按顺序产出决策结果
+        filter_agents_decision = MessageFilterAgent(
+            name="PMCAAgentsDecision",
+            wrapped_agent=agents_decision,
+            filter=MessageFilterConfig(
+                per_source=[
+                    PerSourceFilter(source="PMCAUserProxy", position="first", count=1),
+                    PerSourceFilter(
+                        source="PMCAAgentsDecisionCritic", position="last", count=1
+                    ),
+                ]
+            ),
+        )
+        filter_team_decision = MessageFilterAgent(
+            name="PMCATeamDecision",
+            wrapped_agent=team_decision,
+            filter=MessageFilterConfig(
+                per_source=[
+                    PerSourceFilter(source="PMCAUserProxy", position="first", count=1),
+                    PerSourceFilter(
+                        source="PMCATeamDecisionCritic", position="last", count=1
+                    ),
+                ]
+            ),
+        )
+
+        proxy_decision_reviewer = DecisionReviewerProxy(decision_reviewer, cfg, llm_cfg)
+        team_bootstrap_proxy = TeamBootstrapProxy("PMCATeamBoostrapProxy", cfg, llm_cfg)
+
+        builder = DiGraphBuilder()
+        builder.add_node(user_proxy, activation="any")
+        builder.add_node(filter_team_decision, activation="any")
+        builder.add_node(filter_team_decision_critic, activation="all")
+        builder.add_node(filter_agents_decision, activation="any")
+        builder.add_node(filter_agents_decision_critic, activation="all")
+        builder.add_node(proxy_decision_reviewer, activation="all")
+        builder.add_node(team_bootstrap_proxy, activation="any")
+        builder.add_node(finished, activation="all")
+
+        # 定义节点之间的消息传递条件和流转
+        builder.add_edge(
+            user_proxy,
+            filter_team_decision,
+            activation_group="decision_start",
+            condition=lambda m, _wb=cfg.app_workbench: PMCAEntryGraph.need_decision(
+                m, _wb
+            ),
+        )
+        builder.add_edge(
+            user_proxy,
+            filter_agents_decision,
+            activation_group="decision_start",
+            condition=lambda m, _wb=cfg.app_workbench: PMCAEntryGraph.need_decision(
+                m, _wb
+            ),
+        )
+        builder.add_edge(
+            filter_team_decision,
+            filter_team_decision_critic,
+            activation_group="critic_team_decision",
+        )
+        builder.add_edge(
+            filter_agents_decision,
+            filter_agents_decision_critic,
+            activation_group="critic_agents_decision",
+        )
+        builder.add_edge(
+            filter_team_decision_critic,
+            proxy_decision_reviewer,
+            activation_group="decision_done",
+            condition=lambda m: TeamFeedBack.DECISIONCOMPLETE in m.content,  # type: ignore
+        )
+        builder.add_edge(
+            filter_team_decision_critic,
+            filter_team_decision,
+            activation_group="revise_team_decision",
+            condition=lambda m: TeamFeedBack.DECISIONREVISE in m.content,  # type: ignore
+        )
+        builder.add_edge(
+            filter_agents_decision_critic,
+            proxy_decision_reviewer,
+            activation_group="decision_done",
+            condition=lambda m: TeamFeedBack.DECISIONCOMPLETE in m.content,  # type: ignore
+        )
+        builder.add_edge(
+            filter_agents_decision_critic,
+            filter_agents_decision,
+            activation_group="revise_agents_decision",
+            condition=lambda m: TeamFeedBack.DECISIONREVISE in m.content,  # type: ignore
+        )
+        builder.add_edge(
+            proxy_decision_reviewer, team_bootstrap_proxy, activation_group="team_start"
+        )
+        builder.add_edge(
+            team_bootstrap_proxy,
+            user_proxy,
+            activation_group="team_finished",
+            condition=PMCAEntryGraph.team_finished,
+        )
+        builder.add_edge(
+            team_bootstrap_proxy,
+            user_proxy,
+            activation_group="need_user_input",
+            condition=PMCAEntryGraph.need_user_input,
+        )
+        builder.add_edge(
+            user_proxy,
+            team_bootstrap_proxy,
+            activation_group="team_resume",
+            condition=lambda m, _wb=cfg.app_workbench: PMCAEntryGraph.team_resume(
+                m, _wb
+            ),
+        )
+        builder.add_edge(
+            user_proxy,
+            finished,
+            activation_group="active_finished",
+            condition=lambda m, _wb=cfg.app_workbench: PMCAEntryGraph.activate_finished(
+                m, _wb
+            ),
+        )
+
+        builder.add_edge(
+            team_bootstrap_proxy,
+            finished,
+            activation_group="reactive_finished",
+            condition=lambda m, _wb=cfg.app_workbench: PMCAEntryGraph.reactive_finished(
+                m, _wb
+            ),
+        )
+
+        builder.set_entry_point(user_proxy)
+        graph = builder.build()
+        workflow = GraphFlow(
+            builder.get_participants(),
+            graph=graph,
+            custom_message_types=[StructuredMessage[DecisionResponse]],
+            termination_condition=PMCAEntryGraph.graph_termination(),
+        )
+        await Console(workflow.run_stream())

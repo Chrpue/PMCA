@@ -1,0 +1,14 @@
+def count_characters(file_path):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+            return len(content)
+    except Exception as e:
+        return f"错误: {str(e)}"
+
+# 文件路径
+file_path = "/home/chrpue/projects/PMCA/documents/小说/《全球通史》.txt"
+
+# 统计字数
+character_count = count_characters(file_path)
+print(f"《全球通史》文件字数: {character_count}")

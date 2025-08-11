@@ -1,0 +1,11 @@
+import random
+
+# 生成30个范围在20到50之间的浮点型随机数
+random_numbers = [random.uniform(20, 50) for _ in range(30)]
+
+# 统计大于40的数的数量
+count_greater_than_40 = sum(1 for num in random_numbers if num > 40)
+
+# 打印结果
+print("生成的随机数:", random_numbers)
+print("大于40的数的数量:", count_greater_than_40)

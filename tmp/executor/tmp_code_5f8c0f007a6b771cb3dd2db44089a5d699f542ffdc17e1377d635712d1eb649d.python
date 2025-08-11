@@ -1,0 +1,18 @@
+import os
+
+def find_book(directory, book_title):
+    matches = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if book_title in file:
+                matches.append(os.path.join(root, file))
+    return matches
+
+# Search for "全球通史" in the specified directory
+results = find_book("/home/chrpue/projects/PMCA/documents", "全球通史")
+if results:
+    print("找到以下文件:")
+    for result in results:
+        print(result)
+else:
+    print("未找到名为《全球通史》的文件。请确认书名或检查目录结构。")

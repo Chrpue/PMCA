@@ -1,0 +1,7 @@
+import random
+
+# 生成30个范围在20到50之间的浮点型随机数
+random_floats = [random.uniform(20, 50) for _ in range(30)]
+
+# 输出生成的随机数
+print(random_floats)

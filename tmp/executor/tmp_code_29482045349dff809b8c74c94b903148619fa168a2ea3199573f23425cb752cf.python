@@ -1,0 +1,14 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# 生成30个20到50之间的随机浮点数
+random_floats = np.random.uniform(20, 50, 30)
+
+# 可视化展示
+plt.figure(figsize=(10, 6))
+plt.hist(random_floats, bins=10, color='skyblue', edgecolor='black')
+plt.title('Histogram of 30 Random Floats between 20 and 50')
+plt.xlabel('Value')
+plt.ylabel('Frequency')
+plt.grid(axis='y', alpha=0.75)
+plt.show()

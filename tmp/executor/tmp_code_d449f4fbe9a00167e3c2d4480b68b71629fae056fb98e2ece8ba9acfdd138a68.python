@@ -1,0 +1,16 @@
+import random
+from collections import Counter
+
+# 生成30个在20到50之间的随机浮点数
+random_floats = [random.uniform(20, 50) for _ in range(30)]
+
+# 打印生成的随机浮点数
+print("Generated Random Floats:", random_floats)
+
+# 统计浮点数的频率分布
+frequency = Counter(round(num, 1) for num in random_floats)
+
+# 显示ASCII直方图
+print("\nASCII Histogram:")
+for value, count in sorted(frequency.items()):
+    print(f"{value}: {'*' * count} ({count})")

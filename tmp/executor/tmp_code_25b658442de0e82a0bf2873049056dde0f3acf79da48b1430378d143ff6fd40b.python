@@ -1,0 +1,127 @@
+import zipfile
+import xml.etree.ElementTree as ET
+from collections import defaultdict
+
+# 定义Excel文件路径
+file_path = '/home/chrpue/projects/PMCA/documents/监督中心台账.xlsx'
+
+# 解压Excel文件
+with zipfile.ZipFile(file_path, 'r') as zip_ref:
+    # 获取所有文件列表
+    file_list = zip_ref.namelist()
+    
+    # 查找工作表文件（通常以sheet开头）
+    sheet_files = [f for f in file_list if f.startswith('xl/worksheets/sheet')]
+    
+    # 假设只有一个工作表，否则需要进一步处理
+    sheet_file = sheet_files[0]
+    
+    # 读取工作表文件内容
+    with zip_ref.open(sheet_file) as sheet_content:
+        tree = ET.parse(sheet_content)
+        root = tree.getroot()
+
+# 定义命名空间
+ns = {'x': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+
+# 解析共享字符串表
+shared_strings = {}
+with zipfile.ZipFile(file_path, 'r') as zip_ref:
+    with zip_ref.open('xl/sharedStrings.xml') as ss_content:
+        ss_tree = ET.parse(ss_content)
+        ss_root = ss_tree.getroot()
+        for i, si in enumerate(ss_root.findall('.//x:si', ns)):
+            t = si.find('x:t', ns)
+            if t is not None:
+                shared_strings[i] = t.text
+
+# 解析表头
+headers = []
+merged_cells = {}
+
+# 查找合并单元格信息
+merge_cells_tag = root.find('.//x:mergeCells', ns)
+if merge_cells_tag is not None:
+    for merge_cell in merge_cells_tag.findall('.//x:mergeCell', ns):
+        ref = merge_cell.attrib['ref']
+        start_cell, end_cell = ref.split(':')
+        start_col, start_row = re.match(r'([A-Z]+)(\d+)', start_cell).groups()
+        end_col, end_row = re.match(r'([A-Z]+)(\d+)', end_cell).groups()
+        start_col_idx = column_index_from_string(start_col)
+        end_col_idx = column_index_from_string(end_col)
+        start_row_idx = int(start_row)
+        end_row_idx = int(end_row)
+        for row_idx in range(start_row_idx, end_row_idx + 1):
+            for col_idx in range(start_col_idx, end_col_idx + 1):
+                merged_cells[(row_idx, col_idx)] = (start_row_idx, start_col_idx)
+
+# 解析工作表内容
+rows = []
+current_row = []
+current_row_idx = 1
+for row in root.findall('.//x:row', ns):
+    row_idx = int(row.attrib['r'])
+    if row_idx > current_row_idx:
+        # Fill missing rows with empty cells
+        while row_idx > current_row_idx:
+            rows.append([''] * max(len(current_row), len(headers)))
+            current_row_idx += 1
+    current_row = [''] * len(headers)
+    for cell in row.findall('.//x:c', ns):
+        cell_ref = cell.attrib['r']
+        col, row_num = re.match(r'([A-Z]+)(\d+)', cell_ref).groups()
+        col_idx = column_index_from_string(col)
+        row_num = int(row_num)
+        
+        if (row_num, col_idx) in merged_cells:
+            start_row, start_col = merged_cells[(row_num, col_idx)]
+            if (start_row, start_col) not in merged_cells:
+                cell_value = ''
+                if 't' in cell.attrib and cell.attrib['t'] == 's':
+                    # 共享字符串
+                    s_index = int(cell.find('x:v', ns).text)
+                    cell_value = shared_strings.get(s_index, '')
+                else:
+                    # 数值或文本
+                    v = cell.find('x:v', ns)
+                    if v is not None:
+                        cell_value = v.text
+                headers[start_col] = cell_value.strip() if cell_value is not None else ''
+        else:
+            cell_value = ''
+            if 't' in cell.attrib and cell.attrib['t'] == 's':
+                # 共享字符串
+                s_index = int(cell.find('x:v', ns).text)
+                cell_value = shared_strings.get(s_index, '')
+            else:
+                # 数值或文本
+                v = cell.find('x:v', ns)
+                if v is not None:
+                    cell_value = v.text
+            current_row[col_idx] = cell_value.strip() if cell_value is not None else ''
+    rows.append(current_row)
+    current_row_idx += 1
+
+# 找到“是否突出问题”列的索引
+try:
+    target_col_index = headers.index('是否突出问题')
+except ValueError:
+    print("错误：未找到列'是否突出问题'")
+    exit(1)
+
+# 筛选出“是否突出问题”列为“是”的所有行
+filtered_rows = [row for row in rows if row[target_col_index].strip().lower() == '是']
+
+# 打印结果
+print("筛选结果如下：")
+print(headers)
+for row in filtered_rows:
+    print(row)
+
+def column_index_from_string(column_string):
+    expn = 0
+    col_num = 0
+    for char in reversed(column_string):
+        expn += 1
+        col_num += (ord(char) - ord('A') + 1) * (26 ** (expn - 1))
+    return col_num - 1

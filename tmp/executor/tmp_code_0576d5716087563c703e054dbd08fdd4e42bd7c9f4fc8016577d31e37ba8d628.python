@@ -1,0 +1,11 @@
+import pandas as pd
+
+# 读取Excel文件
+file_path = '/home/chrpue/projects/PMCA/documents/监督中心台账.xlsx'
+df = pd.read_excel(file_path)
+
+# 筛选出“是否突出问题”列为“是”的所有行
+filtered_df = df[df['是否突出问题'] == '是']
+
+# 输出结果
+print(filtered_df)

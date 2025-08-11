@@ -1,0 +1,14 @@
+import csv
+
+file_path = "/home/chrpue/projects/PMCA/documents/磨溪022-H22.csv"
+
+with open(file_path, mode='r', encoding='utf-8-sig') as csvfile:
+    csvreader = csv.DictReader(csvfile)
+    print("字段名列表:", csvreader.fieldnames)
+
+    # 重置文件指针以重新读取前5行
+    csvfile.seek(0)
+    csvreader = csv.reader(csvfile)
+    for i, row in enumerate(csvreader):
+        if i < 6:  # 打印前5行（包括标题行）
+            print(f"第 {i} 行: {row}")

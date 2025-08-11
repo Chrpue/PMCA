@@ -1,0 +1,24 @@
+import random
+import turtle
+
+# 步骤1: 生成30个随机浮点型数据，范围在20到50之间
+data = [random.uniform(20, 50) for _ in range(30)]
+
+# 步骤2: 可视化展示这些数据
+# 设置turtle窗口
+turtle.setup(width=800, height=600)
+turtle.title("Random Float Data Visualization")
+turtle.speed(0)
+
+# 绘制数据
+turtle.penup()
+for index, value in enumerate(data):
+    x = index * 20 - 290  # X轴位置
+    y = value * 4 - 100   # Y轴位置，缩放比例
+    turtle.goto(x, y)
+    turtle.pendown()
+    turtle.write(f"{value:.2f}", align="center")
+
+# 完成绘图
+turtle.hideturtle()
+turtle.done()

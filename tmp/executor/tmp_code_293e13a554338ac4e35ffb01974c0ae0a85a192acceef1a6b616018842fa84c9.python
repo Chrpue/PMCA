@@ -1,0 +1,16 @@
+import pandas as pd
+
+# 读取Excel文件
+file_path = '/home/chrpue/projects/PMCA/documents/监督中心台账.xlsx'
+df = pd.read_excel(file_path)
+
+# 输出所有列的标题名称
+print("所有列的标题名称:")
+print(df.columns.tolist())
+
+# 查找“是否突出问题”列的位置
+if "是否突出问题" in df.columns:
+    issue_column_index = df.columns.get_loc("是否突出问题")
+    print(f"\n“是否突出问题”列的位置: {issue_column_index}")
+else:
+    print("\n“是否突出问题”列未找到。请检查列名是否正确。")

@@ -1,0 +1,14 @@
+import pandas as pd
+
+# 读取CSV文件
+file_path = "/home/chrpue/projects/PMCA/documents/磨溪022-H22.csv"
+df = pd.read_csv(file_path)
+
+# 搜索描述字段中包含“物联网关”的所有记录
+filtered_df = df[df['描述'].str.contains('物联网关', na=False)]
+
+# 提取对应的PID列
+pid_list = filtered_df['PID'].tolist()
+
+# 打印结果
+print("符合条件的设备PID列表:", pid_list)

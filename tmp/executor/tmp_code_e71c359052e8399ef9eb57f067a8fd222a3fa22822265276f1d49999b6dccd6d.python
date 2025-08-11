@@ -1,0 +1,13 @@
+import os
+import csv
+
+file_name = "高石001-X6-info.csv"
+if os.path.exists(file_name):
+    with open(file_name, mode='r', encoding='utf-8') as file:
+        reader = csv.reader(file)
+        print("File Structure:")
+        for i, row in enumerate(reader):
+            if i < 5:  # 打印前5行以模拟 pandas 的 head() 功能
+                print(row)
+else:
+    print(f"File '{file_name}' not found.")

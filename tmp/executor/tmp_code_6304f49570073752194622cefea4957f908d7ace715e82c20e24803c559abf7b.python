@@ -1,0 +1,10 @@
+import pandas as pd
+
+# 读取CSV文件
+df = pd.read_csv("/home/chrpue/projects/PMCA/documents/高石001-X7.csv")
+
+# 打印列名
+print("Columns:", df.columns.tolist())
+
+# 打印前5行的数据，使用markdown格式以便更好地显示
+print("Sample data:\n", df.head().to_markdown(index=False))

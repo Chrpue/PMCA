@@ -1,0 +1,17 @@
+# Python script to analyze the distribution of the '家庭住址' column
+
+import pandas as pd
+
+# Assuming df is already loaded with your data
+try:
+    # Check if the '家庭住址' column exists
+    if '家庭住址' in df.columns:
+        # Count the occurrences of each unique address
+        address_distribution = df['家庭住址'].value_counts()
+        
+        # Print the distribution
+        print(address_distribution)
+    else:
+        print("The '家庭住址' column does not exist in the DataFrame.")
+except Exception as e:
+    print(f"An error occurred: {e}")

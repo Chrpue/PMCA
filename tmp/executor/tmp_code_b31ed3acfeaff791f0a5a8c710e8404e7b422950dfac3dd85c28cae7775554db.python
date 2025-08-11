@@ -1,0 +1,32 @@
+import os
+import csv
+import shutil
+
+file_path = "/data/井站点位信息表/高石001-X6-info.csv"
+temp_file_path = "/tmp/高石001-X6-info.csv"
+
+if os.path.exists(file_path):
+    if os.access(file_path, os.R_OK):
+        try:
+            with open(file_path, mode='r', encoding='utf-8') as file:
+                reader = csv.reader(file)
+                print("File Structure:")
+                for i, row in enumerate(reader):
+                    if i < 5:
+                        print(row)
+        except Exception as e:
+            print(f"Error reading file: {e}")
+    else:
+        print("File is not readable. Attempting to copy to a temporary location...")
+        try:
+            shutil.copy(file_path, temp_file_path)
+            with open(temp_file_path, mode='r', encoding='utf-8') as file:
+                reader = csv.reader(file)
+                print("File Structure (from temporary location):")
+                for i, row in enumerate(reader):
+                    if i < 5:
+                        print(row)
+        except Exception as e:
+            print(f"Failed to copy or read file: {e}")
+else:
+    print(f"File not found at path: {file_path}")
