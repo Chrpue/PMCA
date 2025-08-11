@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+.idea/
+.vscode/
+
+.ipynb_checkpoints/
+
+venv/
+.venv/
+
+mcp_server/
+assistants/
