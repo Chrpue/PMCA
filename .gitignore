@@ -12,3 +12,5 @@ venv/
 
 mcp_server/
 assistants/
+
+.env
