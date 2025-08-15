@@ -10,7 +10,13 @@ from autogen_agentchat.teams import RoundRobinGroupChat
 from base.agents.factory import PMCAAgentFactory
 from base.agents.factory import PMCAAgentMetadata
 
-from base.memory import PMCATeamDecisionGraphMemory, PMCAAgentsDecisionGraphMemory
+# from base.memory import PMCATeamDecisionGraphMemory, PMCAAgentsDecisionGraphMemory
+from base.memory.decision import (
+    PMCAAgentsDecisionLRMemory,
+    PMCATeamDecisionLRMemory,
+    PMCAAgentsDecisionCriticLRMemory,
+    PMCATeamDecisionCriticLRMemory,
+)
 
 
 class TeamDesicionResponse(BaseModel):
@@ -164,25 +170,19 @@ class PMCADecision:
         if llm_cfg.llm_support_structured:
             pmca_team_decision = main_cfg.factory.create_agent(
                 "PMCATeamDecision",
-                memory=[
-                    PMCATeamDecisionGraphMemory(main_cfg.team_decision_memory_workbench)
-                ],
+                memory=[PMCATeamDecisionLRMemory()],
                 # output_content_type=TeamDesicionResponse,
             )
         else:
             pmca_team_decision = main_cfg.factory.create_agent(
                 "PMCATeamDecision",
-                memory=[
-                    PMCATeamDecisionGraphMemory(main_cfg.team_decision_memory_workbench)
-                ],
+                memory=[PMCATeamDecisionLRMemory()],
                 reflect_on_tool_use=False,
             )
 
         pmca_team_decision_critic = main_cfg.factory.create_agent(
             "PMCATeamDecisionCritic",
-            memory=[
-                PMCATeamDecisionGraphMemory(main_cfg.team_decision_memory_workbench)
-            ],
+            memory=[PMCATeamDecisionCriticLRMemory()],
             reflect_on_tool_use=False,
         )
 
@@ -193,28 +193,18 @@ class PMCADecision:
         if llm_cfg.llm_support_structured:
             pmca_agents_decision = main_cfg.factory.create_agent(
                 "PMCAAgentsDecision",
-                memory=[
-                    PMCAAgentsDecisionGraphMemory(
-                        main_cfg.agents_decision_memory_workbench
-                    )
-                ],
+                memory=[PMCAAgentsDecisionLRMemory()],
                 # output_content_type=AgentsDesicionResponse,
             )
         else:
             pmca_agents_decision = main_cfg.factory.create_agent(
                 "PMCAAgentsDecision",
-                memory=[
-                    PMCAAgentsDecisionGraphMemory(
-                        main_cfg.agents_decision_memory_workbench
-                    )
-                ],
+                memory=[PMCAAgentsDecisionLRMemory()],
                 reflect_on_tool_use=False,
             )
         pmca_agents_decision_critic = main_cfg.factory.create_agent(
             "PMCAAgentsDecisionCritic",
-            memory=[
-                PMCAAgentsDecisionGraphMemory(main_cfg.agents_decision_memory_workbench)
-            ],
+            memory=[PMCAAgentsDecisionCriticLRMemory()],
             reflect_on_tool_use=False,
         )
 

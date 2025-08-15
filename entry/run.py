@@ -36,6 +36,10 @@ from base.agents.special_agents import PMCAUser
 from base.team.factory import PMCATeamExecutor
 from base.team import PMCASwarm
 from entry import PMCAEntryGraph, APPWorkbench
+# from base.knowledge.decision import (
+#     PMCAAgentsDecisionKnowledge,
+#     PMCATeamDecisionKnowledge,
+# )
 
 
 class PMCAMainProcessConfig(BaseModel):
@@ -44,8 +48,8 @@ class PMCAMainProcessConfig(BaseModel):
     task: str = ""
     factory: PMCAAgentFactory | None = None
     app_workbench: APPWorkbench | None = None
-    team_decision_memory_workbench: Workbench | None = None
-    agents_decision_memory_workbench: Workbench | None = None
+    # team_decision_memory_workbench: Workbench | None = None
+    # agents_decision_memory_workbench: Workbench | None = None
     registry_assistant_list: Dict[str, Dict[str, Any]] = {}
     function_assistant_list: Dict[str, Dict[str, Any]] = {}
 
@@ -53,7 +57,7 @@ class PMCAMainProcessConfig(BaseModel):
 class PMCALLMConfig(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    llm_provider: ProviderType = ProviderType.OPENAI
+    llm_provider: ProviderType = ProviderType.DEEPSEEK
     model_client: (
         Union[OpenAIChatCompletionClient, OllamaChatCompletionClient] | None
     ) = None
@@ -107,12 +111,12 @@ class PMCAMainProcess:
 
         cfg.factory = pmca_agents_factory
 
-        cfg.team_decision_memory_workbench = (
-            pmca_agents_factory.team_decision_memory_workbench()
-        )
-        cfg.agents_decision_memory_workbench = (
-            pmca_agents_factory.agents_decision_memory_workbench()
-        )
+        # cfg.team_decision_memory_workbench = (
+        #     pmca_agents_factory.team_decision_memory_workbench()
+        # )
+        # cfg.agents_decision_memory_workbench = (
+        #     pmca_agents_factory.agents_decision_memory_workbench()
+        # )
 
     @classmethod
     async def ensure_initialized(cls) -> None:

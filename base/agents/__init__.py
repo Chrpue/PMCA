@@ -1,7 +1,7 @@
 from .function_agents.file_surfer import PMCAFileSurfer
 from .function_agents.inspector import PMCAInspector
 from .function_agents.data_explorer import PMCADataExplorer
-from .special_agents.team_decision import (
+from .special_agents.task_decision import (
     PMCATeamDecision,
     PMCAAgentsDecision,
     PMCATeamDecisionCritic,

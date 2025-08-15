@@ -17,7 +17,7 @@ from pydantic import BaseModel
 
 
 class LightRAGConfig(BaseModel):
-    endpoint: str = "http://localhost:13004/query"
+    endpoint: str = "http://lightrag-app:9621/query"
     headers: dict = {"Content-Type": "application/json"}
     payload: dict = {
         "query": "",
@@ -62,8 +62,6 @@ class PMCATeamDecisionGraphMemory(Memory):
             arguments=config.payload,
         )
 
-        logger.info(resp)
-
         #  解包 ToolResult
         if isinstance(resp, ToolResult):
             text_results = resp.result
@@ -79,6 +77,7 @@ class PMCATeamDecisionGraphMemory(Memory):
                     mime_type=MemoryMimeType.TEXT,
                 )
             )
+        logger.info(contents)
         return MemoryQueryResult(results=contents)
 
     async def update_context(self, model_context):

@@ -1,4 +1,4 @@
-from .team_decision import (
+from .task_decision import (
     PMCADecision,
     PMCATeamDecision,
     PMCAAgentsDecision,

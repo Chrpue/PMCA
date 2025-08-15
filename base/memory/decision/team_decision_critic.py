@@ -15,31 +15,15 @@ from autogen_core.models import SystemMessage
 from autogen_core.tools import Workbench, ToolResult
 from pydantic import BaseModel
 
-
-class LightRAGConfig(BaseModel):
-    endpoint: str = "http://localhost:19622/query"
-    headers: dict = {"Content-Type": "application/json"}
-    payload: dict = {
-        "query": "",
-        "mode": "naive",  # 换成 hybrid，优先尝试图 + 向量综合
-        "top_k": 3,  # 提高召回条数
-        "only_need_context": False,
-        "only_need_prompt": False,
-        "response_type": "string",
-        "stream": False,
-        "user_prompt": """你是一个负责掌管记忆的专家，你的任务是根据用户的查询内容，提供最相关的记忆上下文，但是不要做出任何决断，仅仅提供记忆.""",
-    }
+from base.knowledge.decision import PMCATeamDecisionCriticKnowledge
 
 
-class PMCAAgentsDecisionGraphMemory(Memory):
+class PMCATeamDecisionCriticLRMemory(Memory):
     async def clear(self) -> None:
         pass
 
     async def close(self) -> None:
         pass
-
-    def __init__(self, workbench: Workbench):
-        self.workbench = workbench
 
     async def add(
         self,
@@ -54,32 +38,16 @@ class PMCAAgentsDecisionGraphMemory(Memory):
         cancellation_token: CancellationToken | None = None,
         **kwargs: Any,
     ) -> MemoryQueryResult:
-        config = LightRAGConfig()
-        config.payload["query"] = query_str
+        retrieve = PMCATeamDecisionCriticKnowledge.query(query_str)
 
-        resp = await self.workbench.call_tool(
-            name="query_document",
-            arguments=config.payload,
-        )
-
-        #  解包 ToolResult
-        if isinstance(resp, ToolResult):
-            text_results = resp.result
-        else:
-            text_results = resp
-        contents: List[MemoryContent] = []
-
-        for item in text_results[1:]:
-            raw = item.content
-            contents.append(
+        return MemoryQueryResult(
+            results=[
                 MemoryContent(
-                    content=raw,
+                    content=retrieve,
                     mime_type=MemoryMimeType.TEXT,
                 )
-            )
-
-        logger.info(contents)
-        return MemoryQueryResult(results=contents)
+            ]
+        )
 
     async def update_context(self, model_context):
         messages = await model_context.get_messages()

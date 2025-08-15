@@ -116,10 +116,12 @@ class PMCAEntryGraph:
             team_decision,
             team_decision_critic,
         ) = await PMCADecision.obtain_team_decision_components(cfg, llm_cfg)
+
         (
             agents_decision,
             agents_decision_critic,
         ) = await PMCADecision.obtain_agents_decision_components(cfg, llm_cfg)
+
         decision_reviewer = await PMCADecision.obtain_decision_reviewer_components(
             cfg, llm_cfg
         )
