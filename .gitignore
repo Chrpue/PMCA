@@ -14,3 +14,5 @@ mcp_server/
 assistants/
 
 .env
+.env.*
+!.env.example
