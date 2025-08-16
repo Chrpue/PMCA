@@ -22,9 +22,6 @@ from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 from client import LLMFactory, ProviderType, DutyType
 from base.agents.factory import PMCAAgentFactory
-from base.memory import (
-    PMCAAgentsGraphMemory,
-)
 from base.agents.special_agents import (
     PMCADecision,
     TeamDesicionResponse,
@@ -48,8 +45,6 @@ class PMCAMainProcessConfig(BaseModel):
     task: str = ""
     factory: PMCAAgentFactory | None = None
     app_workbench: APPWorkbench | None = None
-    # team_decision_memory_workbench: Workbench | None = None
-    # agents_decision_memory_workbench: Workbench | None = None
     registry_assistant_list: Dict[str, Dict[str, Any]] = {}
     function_assistant_list: Dict[str, Dict[str, Any]] = {}
 
