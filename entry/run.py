@@ -52,7 +52,7 @@ class PMCAMainProcessConfig(BaseModel):
 class PMCALLMConfig(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    llm_provider: ProviderType = ProviderType.DEEPSEEK
+    llm_provider: ProviderType = ProviderType.OPENAI
     model_client: (
         Union[OpenAIChatCompletionClient, OllamaChatCompletionClient] | None
     ) = None
