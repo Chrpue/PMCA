@@ -15,6 +15,8 @@ from .special_agents.code_generator import PMCACodeGenerator
 from .special_agents.code_gen_exec import PMCACodeGenExecTool
 from .special_agents.code_planner import PMCACodeExecPlanner
 from .special_agents.user import PMCAUser
+from .knowledge_agents.librarian import PMCAKnowledgeLibrarian
+from .knowledge_agents.technician import PMCAKnowledgeTechnician
 
 
 __all__ = [
@@ -33,4 +35,6 @@ __all__ = [
     "PMCAInspector",
     "PMCAFileSurfer",
     "PMCADataExplorer",
+    "PMCAKnowledgeLibrarian",
+    "PMCAKnowledgeTechnician",
 ]

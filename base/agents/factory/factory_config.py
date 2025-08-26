@@ -11,7 +11,7 @@ from .agent_workbench import PMCACombinedWorkbench
 class PMCAFactoryConfig:
     """Agent Factory Base Config"""
 
-    model_client_stream = True
+    model_client_stream = False
     tool_call_summary_format = "{tool_name} : {arguments} : {result}"
 
     def __init__(

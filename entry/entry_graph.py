@@ -197,7 +197,7 @@ class PMCAEntryGraph:
         builder.add_edge(
             user_proxy,
             filter_team_decision,
-            activation_group="decision_start",
+            activation_group="team_decision_start",
             condition=lambda m, _wb=cfg.app_workbench: PMCAEntryGraph.need_decision(
                 m, _wb
             ),
@@ -205,7 +205,7 @@ class PMCAEntryGraph:
         builder.add_edge(
             user_proxy,
             filter_agents_decision,
-            activation_group="decision_start",
+            activation_group="agents_decision_start",
             condition=lambda m, _wb=cfg.app_workbench: PMCAEntryGraph.need_decision(
                 m, _wb
             ),
@@ -223,29 +223,32 @@ class PMCAEntryGraph:
         builder.add_edge(
             filter_team_decision_critic,
             proxy_decision_reviewer,
-            activation_group="decision_done",
-            condition=lambda m: TeamFeedBack.DECISIONCOMPLETE in m.content,  # type: ignore
+            activation_group="team_decision_done",
+            condition=lambda m: TeamFeedBack.TEAMDECISIONCOMPLETE in m.content,  # type: ignore
         )
         builder.add_edge(
             filter_team_decision_critic,
             filter_team_decision,
             activation_group="revise_team_decision",
-            condition=lambda m: TeamFeedBack.DECISIONREVISE in m.content,  # type: ignore
+            condition=lambda m: TeamFeedBack.TEAMDECISIONREVISE in m.content,  # type: ignore
         )
         builder.add_edge(
             filter_agents_decision_critic,
             proxy_decision_reviewer,
-            activation_group="decision_done",
-            condition=lambda m: TeamFeedBack.DECISIONCOMPLETE in m.content,  # type: ignore
+            activation_group="agents_decision_done",
+            condition=lambda m: TeamFeedBack.AGENTSDECISIONCOMPLETE in m.content,  # type: ignore
         )
         builder.add_edge(
             filter_agents_decision_critic,
             filter_agents_decision,
             activation_group="revise_agents_decision",
-            condition=lambda m: TeamFeedBack.DECISIONREVISE in m.content,  # type: ignore
+            condition=lambda m: TeamFeedBack.AGENTSDECISIONREVISE in m.content,  # type: ignore
         )
         builder.add_edge(
-            proxy_decision_reviewer, team_bootstrap_proxy, activation_group="team_start"
+            proxy_decision_reviewer,
+            team_bootstrap_proxy,
+            activation_group="team_start",
+            condition=lambda m: TeamFeedBack.OVERALLDECISIONCOMPLETE in m.content,  # type: ignore
         )
         builder.add_edge(
             team_bootstrap_proxy,

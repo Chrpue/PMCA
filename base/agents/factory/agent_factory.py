@@ -124,28 +124,24 @@ class PMCAAgentFactory(PMCAFactoryConfig):
 
         meta = self._registry[biz_type]()
 
-        if biz_type == "PMCACodeGenExec":
-            agent = AssistantAgent(
-                name=meta.name or biz_type,
-                model_client=self._model_client,
-                system_message=meta.system_message,
-                description=meta.description,
-                model_client_stream=self.model_client_stream,
-                tool_call_summary_format=self.tool_call_summary_format,
-                memory=memory or [],
-                **kwargs,
+        agent_args = {
+            "name": meta.name or biz_type,
+            "model_client": self._model_client,
+            "system_message": meta.system_message,
+            "description": meta.description,
+            "model_client_stream": self.model_client_stream,
+            "tool_call_summary_format": self.tool_call_summary_format,
+            "memory": memory or [],
+            **kwargs,
+        }
+
+        if biz_type in PMCASpecialAgents:
+            print(
+                f"提示信息: 正在为特殊智能体 '{biz_type}' 创建实例，不分配默认工作台。"
             )
         else:
-            agent = AssistantAgent(
-                name=meta.name or biz_type,
-                model_client=self._model_client,
-                system_message=meta.system_message,
-                description=meta.description,
-                workbench=self._filtered_workbench(biz_type),
-                model_client_stream=self.model_client_stream,
-                tool_call_summary_format=self.tool_call_summary_format,
-                memory=memory or [],
-                **kwargs,
-            )
+            agent_args["workbench"] = self._filtered_workbench(biz_type) or None
+
+        agent = AssistantAgent(**agent_args)
 
         return agent
