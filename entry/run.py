@@ -33,10 +33,12 @@ from base.agents.special_agents import PMCAUser
 from base.team.factory import PMCATeamExecutor
 from base.team import PMCASwarm
 from entry import PMCAEntryGraph, APPWorkbench
+
 # from base.knowledge.decision import (
 #     PMCAAgentsDecisionKnowledge,
 #     PMCATeamDecisionKnowledge,
 # )
+from base.memory.factory import PMCAMirixMemoryManager
 
 
 class PMCAMainProcessConfig(BaseModel):
@@ -47,6 +49,7 @@ class PMCAMainProcessConfig(BaseModel):
     app_workbench: APPWorkbench | None = None
     registry_assistant_list: Dict[str, Dict[str, Any]] = {}
     function_assistant_list: Dict[str, Dict[str, Any]] = {}
+    memory_manager: PMCAMirixMemoryManager | None = None
 
 
 class PMCALLMConfig(BaseModel):
@@ -89,14 +92,27 @@ class PMCAMainProcess:
 
         assert PMCAMainProcess.llm_config.model_client is not None, "模型调用出现异常……"
 
+        logger.info("正在初始化 Mirix 记忆管理器...")
+        try:
+            memory_manager = PMCAMirixMemoryManager()
+        except ConnectionAbortedError as e:
+            logger.critical(e)
+            raise
+
+        logger.info("正在初始化 PMCA 智能体工厂...")
         pmca_agents_factory = PMCAAgentFactory(
             model_client=cast(
                 Union[OpenAIChatCompletionClient, OllamaChatCompletionClient],
                 PMCAMainProcess.llm_config.model_client,
-            )
+            ),
+            memory_manager=memory_manager,
         )
 
+        logger.success("PMCA 智能体工厂初始化成功...")
+
         cfg = cls.main_config
+
+        cfg.memory_manager = memory_manager
 
         cfg.app_workbench = APPWorkbench()
 
@@ -105,13 +121,6 @@ class PMCAMainProcess:
         cfg.function_assistant_list = PMCAAgentFactory.list_function_agents()
 
         cfg.factory = pmca_agents_factory
-
-        # cfg.team_decision_memory_workbench = (
-        #     pmca_agents_factory.team_decision_memory_workbench()
-        # )
-        # cfg.agents_decision_memory_workbench = (
-        #     pmca_agents_factory.agents_decision_memory_workbench()
-        # )
 
     @classmethod
     async def ensure_initialized(cls) -> None:
@@ -126,11 +135,10 @@ class PMCAMainProcess:
 
     @classmethod
     async def go(cls) -> None:
+        load_dotenv()
         await cls.ensure_initialized()
-
         cfg = cls.main_config
         llm_cfg = cls.llm_config
-
         await PMCAEntryGraph.begin(cfg, llm_cfg)
 
 

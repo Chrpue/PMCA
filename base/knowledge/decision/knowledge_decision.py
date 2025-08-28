@@ -1,8 +1,29 @@
 import json
+from typing import Optional, Dict
 from base.knowledge.factory import PMCALightRAGClient
 
 
-class PMCAAgentsDecisionKnowledge:
+class PMCAKnowledge:
+    # _format_context 保持 @staticmethod 不变
+    @staticmethod
+    def _format_context(query_result: Optional[Dict]) -> str:
+        if not query_result or not query_result.get("chunks"):
+            return "在知识库中未检索到相关信息。"
+
+        context_str = "\n\n".join(
+            [
+                f"参考知识 {i + 1}:\n{chunk.get('text', '')}"
+                for i, chunk in enumerate(query_result["chunks"])
+            ]
+        )
+        # **优化**: 在最终交付给LLM的上下文中，可以移除我们的内部标记，使其更干净
+        context_str = context_str.replace(
+            "[KnowledgeFor: PMCATeamDecision]", ""
+        ).replace("[KnowledgeFor: PMCAAgentsDecision]", "")  # 未来可以扩展
+        return f"为你检索到如下参考知识：\n{context_str}"
+
+
+class PMCAAgentsDecisionKnowledge(PMCAKnowledge):
     _biz = "app"
     _prompt = """
 作为一名顶级的AI智能体团队“首席任务官”，我的任务是基于给定的“当前任务”和知识库中的“相关历史知识”，为外部的“智能体决策官”精准地定义出所需的【理想团队画像】。
@@ -19,19 +40,26 @@ class PMCAAgentsDecisionKnowledge:
 """
 
     @classmethod
-    def query(cls, task: str, with_graph=False):
+    def query(cls, query_str: str, with_graph=False):
         client = PMCALightRAGClient()
+
+        context_prefix = "[KnowledgeFor: PMCATeamDecision]"
+        final_query = f"{context_prefix} {query_str}".strip()
+        logger.info(f"Executing scoped RAG query: '{final_query}'")
+
+        params = {"top_k": 5}  # 现在我们只需要检索最相关的5条，因为查询本身已经非常精确
 
         response = client.query(
             cls._biz,
-            task,
+            final_query,
             with_graph=with_graph,
             override_params={"user_prompt": cls._prompt},
         )
-        return json.dumps(response, indent=2, ensure_ascii=False)
+        return PMCAKnowledge._format_context(response)
+        # return json.dumps(response, indent=2, ensure_ascii=False)
 
 
-class PMCATeamDecisionKnowledge:
+class PMCATeamDecisionKnowledge(PMCAKnowledge):
     _biz = "app"
     _prompt = """
 作为一名顶级的AI系统架构师，我的任务是基于给定的“当前任务”和刚刚从知识库中检索出的“相关历史知识”，为外部的“团队决策官”提炼出最高效的【团队协作策略】。
@@ -48,16 +76,23 @@ class PMCATeamDecisionKnowledge:
 """
 
     @classmethod
-    def query(cls, task: str, with_graph=True):
+    def query(cls, query_str: str, with_graph=True):
         client = PMCALightRAGClient()
+
+        context_prefix = "[KnowledgeFor: PMCATeamDecision]"
+        final_query = f"{context_prefix} {query_str}".strip()
+        logger.info(f"Executing scoped RAG query: '{final_query}'")
+
+        params = {"top_k": 5}
 
         response = client.query(
             cls._biz,
-            task,
+            final_query,
             with_graph=with_graph,
             override_params={"user_prompt": cls._prompt},
         )
-        return json.dumps(response, indent=2, ensure_ascii=False)
+        return PMCAKnowledge._format_context(response)
+        # return json.dumps(response, indent=2, ensure_ascii=False)
 
 
 class PMCAAgentsDecisionCriticKnowledge:

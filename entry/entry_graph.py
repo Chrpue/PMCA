@@ -110,6 +110,10 @@ class PMCAEntryGraph:
     @staticmethod
     async def begin(cfg, llm_cfg):
         """Entry"""
+        logger.info("========================================")
+        logger.info("成功进入 PMCAEntryGraph.begin，开始执行图流程...")
+        logger.info(f"接收到的任务: {cfg.task}")
+        logger.info("========================================")
 
         await PMCADecision.obtain_agents_duties(cfg)
         (

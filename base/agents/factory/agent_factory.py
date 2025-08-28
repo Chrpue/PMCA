@@ -6,6 +6,14 @@ from .factory_config import PMCAFactoryConfig
 from .agent_metadata import PMCAAgentMetadata
 from autogen_ext.tools.mcp import McpWorkbench
 
+from typing import TYPE_CHECKING
+from loguru import logger
+
+from base.memory.factory import PMCAMirixMemory
+
+if TYPE_CHECKING:
+    from base.memory.factory import PMCAMirixMemoryManager
+
 PMCASpecialAgents = ["PMCACodeGenExec"]
 PMCAExcludeAgents = [
     "PMCATeamDecision",
@@ -23,8 +31,9 @@ class PMCAAgentFactory(PMCAFactoryConfig):
 
     _registry: Dict[str, Type[PMCAAgentMetadata]] = {}
 
-    def __init__(self, model_client):
+    def __init__(self, model_client, memory_manager: "PMCAMirixMemoryManager"):
         super().__init__(model_client)
+        self.memory_manager = memory_manager
 
     @property
     def registry(cls):
@@ -124,6 +133,12 @@ class PMCAAgentFactory(PMCAFactoryConfig):
 
         meta = self._registry[biz_type]()
 
+        combined_memory = [
+            PMCAMirixMemory(
+                agent_name=meta.name or biz_type, memory_manager=self.memory_manager
+            )
+        ] + (memory or [])
+
         agent_args = {
             "name": meta.name or biz_type,
             "model_client": self._model_client,
@@ -131,12 +146,12 @@ class PMCAAgentFactory(PMCAFactoryConfig):
             "description": meta.description,
             "model_client_stream": self.model_client_stream,
             "tool_call_summary_format": self.tool_call_summary_format,
-            "memory": memory or [],
+            "memory": combined_memory,
             **kwargs,
         }
 
         if biz_type in PMCASpecialAgents:
-            print(
+            logger.info(
                 f"提示信息: 正在为特殊智能体 '{biz_type}' 创建实例，不分配默认工作台。"
             )
         else:
