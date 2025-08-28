@@ -263,19 +263,15 @@ class PMCADecision:
         if llm_cfg.llm_support_structured:
             pmca_team_decision = main_cfg.factory.create_agent(
                 "PMCATeamDecision",
-                # memory=[PMCATeamDecisionLRMemory()],
-                # output_content_type=TeamDesicionResponse,
             )
         else:
             pmca_team_decision = main_cfg.factory.create_agent(
                 "PMCATeamDecision",
-                # memory=[PMCATeamDecisionLRMemory()],
                 reflect_on_tool_use=False,
             )
 
         pmca_team_decision_critic = main_cfg.factory.create_agent(
             "PMCATeamDecisionCritic",
-            # memory=[PMCATeamDecisionCriticLRMemory()],
             reflect_on_tool_use=False,
         )
 
@@ -286,18 +282,14 @@ class PMCADecision:
         if llm_cfg.llm_support_structured:
             pmca_agents_decision = main_cfg.factory.create_agent(
                 "PMCAAgentsDecision",
-                # memory=[PMCAAgentsDecisionLRMemory()],
-                # output_content_type=AgentsDesicionResponse,
             )
         else:
             pmca_agents_decision = main_cfg.factory.create_agent(
                 "PMCAAgentsDecision",
-                # memory=[PMCAAgentsDecisionLRMemory()],
                 reflect_on_tool_use=False,
             )
         pmca_agents_decision_critic = main_cfg.factory.create_agent(
             "PMCAAgentsDecisionCritic",
-            # memory=[PMCAAgentsDecisionCriticLRMemory()],
             reflect_on_tool_use=False,
         )
 
@@ -322,13 +314,11 @@ class PMCADecision:
         if llm_config.llm_support_structured:
             pmca_agents_decision_agent = pipeline_config.factory.create_agent(
                 "PMCAAgentsDecision",
-                # memory=[pipeline_config.agents_memory],
                 output_content_type=AgentsDesicionResponse,
             )
         else:
             pmca_agents_decision_agent = pipeline_config.factory.create_agent(
                 "PMCAAgentsDecision",
-                # memory=[pipeline_config.agents_memory],
             )
 
         pmca_agents_decision_critic_agent = pipeline_config.factory.create_agent(

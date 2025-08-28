@@ -125,19 +125,17 @@ class PMCAAgentFactory(PMCAFactoryConfig):
                 workbenches.append(McpWorkbench(server_params=mcp_params))
         return workbenches
 
-    def create_agent(
-        self, biz_type: str, memory: Optional[List] = None, **kwargs
-    ) -> AssistantAgent:
+    def create_agent(self, biz_type: str, **kwargs) -> AssistantAgent:
         if biz_type not in self._registry:
             raise ValueError(f"未知的业务类型: {biz_type}")
 
         meta = self._registry[biz_type]()
 
-        combined_memory = [
+        mirix_memory = [
             PMCAMirixMemory(
                 agent_name=meta.name or biz_type, memory_manager=self.memory_manager
             )
-        ] + (memory or [])
+        ]
 
         agent_args = {
             "name": meta.name or biz_type,
@@ -146,7 +144,7 @@ class PMCAAgentFactory(PMCAFactoryConfig):
             "description": meta.description,
             "model_client_stream": self.model_client_stream,
             "tool_call_summary_format": self.tool_call_summary_format,
-            "memory": combined_memory,
+            "memory": mirix_memory,
             **kwargs,
         }
 

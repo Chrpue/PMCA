@@ -16,7 +16,6 @@ from .memory_manager import PMCAMirixMemoryManager
 class PMCAMirixMemory(Memory):
     """
     一个自定义的AutoGen Memory类，用于将每个智能体的记忆连接到外部的Mirix服务。
-    该类严格遵循用户提供的 PMCAAgentsDecisionLRMemory 示例模式。
     """
 
     def __init__(self, agent_name: str, memory_manager: PMCAMirixMemoryManager):
@@ -29,9 +28,6 @@ class PMCAMirixMemory(Memory):
 
         # 在创建时，确保该智能体已在Mirix中注册
         self.memory_manager.register_agent_memory(self.agent_name)
-        logger.success(
-            f"为智能体 '{self.agent_name}' 成功创建并初始化 PMCAMirixMemory。"
-        )
 
     async def add(
         self,

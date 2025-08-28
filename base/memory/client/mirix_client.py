@@ -17,7 +17,6 @@ class PMCAMirixClient:
             raise ValueError("环境变量 'MIRIX_SERVER' 未设置，无法连接到Mirix服务。")
 
         self.session = requests.Session()
-        logger.info(f"PMCAMirixClient 初始化，将连接到 Mirix 服务于: {self.base_url}")
 
     def _make_request(
         self, method: str, endpoint: str, **kwargs
@@ -29,7 +28,6 @@ class PMCAMirixClient:
             )
             response = self.session.request(method, url, timeout=30, **kwargs)
             response.raise_for_status()
-            logger.debug(f"从Mirix收到成功响应 ({response.status_code}) from {url}")
             return response.json()
         except requests.exceptions.HTTPError as http_err:
             logger.error(
