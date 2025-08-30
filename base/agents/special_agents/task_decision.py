@@ -330,7 +330,7 @@ class PMCADecision:
                 pmca_agents_decision_agent,
                 pmca_agents_decision_critic_agent,
             ],
-            MaxMessageTermination(max_messages=34),
+            MaxMessageTermination(max_messages=34),  # type: ignore
         )
 
         agents_desc = "\n".join(
@@ -384,7 +384,7 @@ class PMCADecision:
                 pmca_team_decision_agent,
                 pmca_team_decision_critic_agent,
             ],
-            TextMentionTermination("APPROVE") | MaxMessageTermination(max_messages=4),
+            TextMentionTermination("APPROVE") | MaxMessageTermination(max_messages=4),  # type: ignore
         )
 
         # stream = await Console(team.run_stream(task=pipeline_config.task))
