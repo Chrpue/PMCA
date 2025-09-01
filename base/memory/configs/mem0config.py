@@ -1,4 +1,4 @@
-mem0LocalConfig = {
+PMCAMem0LocalConfig = {
     "llm": {
         "provider": "deepseek",
         "config": {

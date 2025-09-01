@@ -6,13 +6,10 @@ from .factory_config import PMCAFactoryConfig
 from .agent_metadata import PMCAAgentMetadata
 from autogen_ext.tools.mcp import McpWorkbench
 
-from typing import TYPE_CHECKING
+from base.memory import PMCAMem0LocalService
+
 from loguru import logger
 
-from base.memory.factory import PMCAMirixMemory
-
-if TYPE_CHECKING:
-    from base.memory.factory import PMCAMirixMemoryManager
 
 PMCASpecialAgents = ["PMCACodeGenExec"]
 PMCAExcludeAgents = [
@@ -31,9 +28,8 @@ class PMCAAgentFactory(PMCAFactoryConfig):
 
     _registry: Dict[str, Type[PMCAAgentMetadata]] = {}
 
-    def __init__(self, model_client, memory_manager: "PMCAMirixMemoryManager"):
+    def __init__(self, model_client):
         super().__init__(model_client)
-        self.memory_manager = memory_manager
 
     @property
     def registry(cls):
@@ -131,11 +127,7 @@ class PMCAAgentFactory(PMCAFactoryConfig):
 
         meta = self._registry[biz_type]()
 
-        mirix_memory = [
-            PMCAMirixMemory(
-                agent_name=meta.name or biz_type, memory_manager=self.memory_manager
-            )
-        ]
+        memory = PMCAMem0LocalService.memory(meta.name or biz_type)
 
         agent_args = {
             "name": meta.name or biz_type,
@@ -144,7 +136,7 @@ class PMCAAgentFactory(PMCAFactoryConfig):
             "description": meta.description,
             "model_client_stream": self.model_client_stream,
             "tool_call_summary_format": self.tool_call_summary_format,
-            "memory": mirix_memory,
+            "memory": [memory],
             **kwargs,
         }
 

@@ -1,3 +1,3 @@
-from .mem0config import mem0LocalConfig
+from .mem0config import PMCAMem0LocalConfig
 
-__all__ = ["mem0LocalConfig"]
+__all__ = ["PMCAMem0LocalConfig"]

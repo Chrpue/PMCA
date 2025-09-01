@@ -38,7 +38,6 @@ from entry import PMCAEntryGraph, APPWorkbench
 #     PMCAAgentsDecisionKnowledge,
 #     PMCATeamDecisionKnowledge,
 # )
-from base.memory.factory import PMCAMirixMemoryManager
 
 
 class PMCAMainProcessConfig(BaseModel):
@@ -49,7 +48,6 @@ class PMCAMainProcessConfig(BaseModel):
     app_workbench: APPWorkbench | None = None
     registry_assistant_list: Dict[str, Dict[str, Any]] = {}
     function_assistant_list: Dict[str, Dict[str, Any]] = {}
-    memory_manager: PMCAMirixMemoryManager | None = None
 
 
 class PMCALLMConfig(BaseModel):
@@ -92,27 +90,17 @@ class PMCAMainProcess:
 
         assert PMCAMainProcess.llm_config.model_client is not None, "模型调用出现异常……"
 
-        logger.info("正在初始化 Mirix 记忆管理器...")
-        try:
-            memory_manager = PMCAMirixMemoryManager()
-        except ConnectionAbortedError as e:
-            logger.critical(e)
-            raise
-
         logger.info("正在初始化 PMCA 智能体工厂...")
         pmca_agents_factory = PMCAAgentFactory(
             model_client=cast(
                 Union[OpenAIChatCompletionClient, OllamaChatCompletionClient],
                 PMCAMainProcess.llm_config.model_client,
             ),
-            memory_manager=memory_manager,
         )
 
         logger.success("PMCA 智能体工厂初始化成功...")
 
         cfg = cls.main_config
-
-        cfg.memory_manager = memory_manager
 
         cfg.app_workbench = APPWorkbench()
 
