@@ -1,9 +1,0 @@
-import random
-
-# 生成30个随机浮点数（范围20~50）
-random_floats = [random.uniform(20, 50) for _ in range(30)]
-
-# 统计大于40的数有几个
-count_greater_than_40 = sum(1 for num in random_floats if num > 40)
-
-random_floats, count_greater_than_40

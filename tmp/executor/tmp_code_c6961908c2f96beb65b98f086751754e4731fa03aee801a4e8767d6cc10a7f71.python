@@ -1,9 +1,0 @@
-import random
-
-# Step 1: 生成30个浮点型数据，范围在20到50之间
-data = [random.uniform(20, 50) for _ in range(30)]
-print("生成的数据:", data)
-
-# Step 2: 统计大于40的数有多少个
-count_greater_than_40 = sum(1 for number in data if number > 40)
-print("大于40的数个数:", count_greater_than_40)

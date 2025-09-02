@@ -1,9 +1,0 @@
-import random
-
-# 生成30个20到50之间的浮点数
-numbers = [random.uniform(20, 50) for _ in range(30)]
-print("生成的浮点数:", numbers)
-
-# 统计大于30的数的个数
-count_greater_than_30 = sum(1 for number in numbers if number > 30)
-print("大于30的数的个数:", count_greater_than_30)

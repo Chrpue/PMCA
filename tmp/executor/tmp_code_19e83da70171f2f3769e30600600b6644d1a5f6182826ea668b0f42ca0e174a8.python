@@ -1,9 +1,0 @@
-import random
-
-# 步骤1: 生成30个随机浮点型数据，范围在20到50之间
-data = [random.uniform(20, 50) for _ in range(30)]
-
-# 步骤2: 输出生成的随机数据
-print("Generated Random Float Data:")
-for value in data:
-    print(f"{value:.2f}")
