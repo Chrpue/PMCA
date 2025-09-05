@@ -33,6 +33,8 @@ NOTE: This module does not mutate any existing repository code.  It
 serves as a self‑contained example of how to enhance the mem0 service.
 """
 
+import re
+import copy
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
@@ -62,6 +64,12 @@ class PMCAMem0LocalService:
     _mem0_config: Dict[str, Any] = PMCAMem0LocalConfig
     _instances: Dict[str, Mem0Memory] = {}
 
+    @staticmethod
+    def _agent_to_collection(agent_name: str) -> str:
+        return re.sub(
+            r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", agent_name
+        ).lower()
+
     @classmethod
     def _get_instance(cls, agent_name: str) -> Mem0Memory:
         """
@@ -75,15 +83,17 @@ class PMCAMem0LocalService:
             A ``Mem0Memory`` instance configured for local storage.
         """
         if agent_name not in cls._instances:
+            # 深拷贝基础配置并覆盖 collection_name
+            config = copy.deepcopy(cls._mem0_config)
+            collection = cls._agent_to_collection(agent_name)
+            vector_cfg = config.setdefault("vector_store", {}).setdefault("config", {})
+            vector_cfg["collection_name"] = collection
             logger.info(
-                f"Creating new mem0 memory instance for agent '{agent_name}'..."
+                f"Creating new mem0 instance for '{agent_name}', collection='{collection}'"
             )
-            instance = Mem0Memory(
-                user_id=agent_name,
-                is_cloud=False,
-                config={**cls._mem0_config},
+            cls._instances[agent_name] = Mem0Memory(
+                user_id=agent_name, is_cloud=False, config=config
             )
-            cls._instances[agent_name] = instance
         return cls._instances[agent_name]
 
     @classmethod

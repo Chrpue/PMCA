@@ -12,12 +12,13 @@ PMCAMem0LocalConfig = {
     "vector_store": {
         "provider": "pgvector",
         "config": {
-            "collection_name": "test",
+            "collection_name": "mem0",
             "host": "localhost",
             "port": 25432,
             "user": "postgres",
             "password": "postgres",
-            "embedding_model_dims": 1024,
+            # "embedding_model_dims": 1024,
+            "embedding_model_dims": 1536,
         },
     },
     "embedder": {
