@@ -166,6 +166,7 @@ def main():
         description="A smart tool to sync a local knowledge directory with a LightRAG server.",
         formatter_class=argparse.RawTextHelpFormatter,
     )
+
     parser.add_argument(
         "-w",
         "--workspace",
