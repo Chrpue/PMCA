@@ -15,12 +15,9 @@ from autogen_agentchat.ui import Console
 from autogen_agentchat.messages import StructuredMessage
 from autogen_core.tools import StaticWorkbench, ToolResult, ToolSchema
 
-from base.agents.special_agents import PMCADecision, PMCAUser
-
-from base.team.factory import TeamFeedBack
-from base.team import PMCASwarm
-
-from base.agents.special_agents import DecisionResponse
+from core.team.factory import PMCATeamFeedBack
+from core.assistant.special_agents import PMCADecision, PMCAUser
+from core.assistant.special_agents import DecisionResponse
 from entry.team_boostrap_proxy import TeamBootstrapProxy
 from entry.decision_reviewer_proxy import DecisionReviewerProxy
 
@@ -62,22 +59,23 @@ class PMCAEntryGraph:
             ExternalTermination()
             | MaxMessageTermination(max_messages=80)
             | TextMentionTermination(
-                TeamFeedBack.GRAPHFINISHED, sources="PMCAGraphFinished"
+                PMCATeamFeedBack.GRAPHFINISHED, sources="PMCAGraphFinished"
             )
         )
 
     @staticmethod
     def team_finished(msg):
-        return TeamFeedBack.FINISHED in msg.content
+        return PMCATeamFeedBack.FINISHED in msg.content
 
     @staticmethod
     def need_user_input(msg):
-        return TeamFeedBack.NEEDUSER in msg.content
+        return PMCATeamFeedBack.NEEDUSER in msg.content
 
     @staticmethod
     def need_decision(msg, wb) -> bool:
         return (
-            TeamFeedBack.QUIT not in msg.content.upper() and "team_state" not in wb._kv
+            PMCATeamFeedBack.QUIT not in msg.content.upper()
+            and "team_state" not in wb._kv
         )
 
     @staticmethod
@@ -92,7 +90,7 @@ class PMCAEntryGraph:
     @staticmethod
     def activate_finished(msg, wb):
         return (
-            TeamFeedBack.QUIT in msg.content.upper()
+            PMCATeamFeedBack.QUIT in msg.content.upper()
             and "team_state" in wb._kv
             and wb._kv.get("team_state") is not None
         )
@@ -100,7 +98,7 @@ class PMCAEntryGraph:
     @staticmethod
     def reactive_finished(msg, wb) -> bool:
         return (
-            TeamFeedBack.FINISHED in msg.content.upper()
+            PMCATeamFeedBack.FINISHED in msg.content.upper()
             and "team_state" in wb._kv
             and wb._kv.get("team_state") is not None
         )
@@ -222,31 +220,31 @@ class PMCAEntryGraph:
             filter_team_decision_critic,
             proxy_decision_reviewer,
             activation_group="team_decision_done",
-            condition=lambda m: TeamFeedBack.TEAMDECISIONCOMPLETE in m.content,  # type: ignore
+            condition=lambda m: PMCATeamFeedBack.TEAMDECISIONCOMPLETE in m.content,  # type: ignore
         )
         builder.add_edge(
             filter_team_decision_critic,
             filter_team_decision,
             activation_group="revise_team_decision",
-            condition=lambda m: TeamFeedBack.TEAMDECISIONREVISE in m.content,  # type: ignore
+            condition=lambda m: PMCATeamFeedBack.TEAMDECISIONREVISE in m.content,  # type: ignore
         )
         builder.add_edge(
             filter_agents_decision_critic,
             proxy_decision_reviewer,
             activation_group="agents_decision_done",
-            condition=lambda m: TeamFeedBack.AGENTSDECISIONCOMPLETE in m.content,  # type: ignore
+            condition=lambda m: PMCATeamFeedBack.AGENTSDECISIONCOMPLETE in m.content,  # type: ignore
         )
         builder.add_edge(
             filter_agents_decision_critic,
             filter_agents_decision,
             activation_group="revise_agents_decision",
-            condition=lambda m: TeamFeedBack.AGENTSDECISIONREVISE in m.content,  # type: ignore
+            condition=lambda m: PMCATeamFeedBack.AGENTSDECISIONREVISE in m.content,  # type: ignore
         )
         builder.add_edge(
             proxy_decision_reviewer,
             team_bootstrap_proxy,
             activation_group="team_start",
-            condition=lambda m: TeamFeedBack.OVERALLDECISIONCOMPLETE in m.content,  # type: ignore
+            condition=lambda m: PMCATeamFeedBack.OVERALLDECISIONCOMPLETE in m.content,  # type: ignore
         )
         builder.add_edge(
             team_bootstrap_proxy,

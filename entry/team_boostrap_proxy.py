@@ -10,15 +10,9 @@ from autogen_agentchat.messages import (
 )
 
 
-from base.team.factory import PMCATeamExecutor, TeamFeedBack
-from base.team import PMCASwarm
-
-TEAM_MAP = {
-    "Swarm": PMCASwarm,
-    "RoundRobin": PMCASwarm,
-    "MagenticOne": PMCASwarm,
-    "GraphFlow": PMCASwarm,
-}
+from core.team.factory import PMCATeamExecutor, PMCATeamFeedBack
+from core.team import PMCATeamMap
+from core.team import PMCASwarm
 
 
 class TeamBootstrapProxy(AssistantAgent):
@@ -45,7 +39,7 @@ class TeamBootstrapProxy(AssistantAgent):
         if not decision_result.partners:
             raise RuntimeError("TeamBootstrapProxy: 决策结果中没有候选智能体列表")
         # 根据决策选择团队组件类，创建团队工厂
-        cls = TEAM_MAP.get(decision_result.team)
+        cls = PMCATeamMap.get(decision_result.team)
         if cls is None:
             raise ValueError(
                 f"TeamBootstrapProxy: 未知的团队组件类型: {decision_result.team}"
@@ -104,7 +98,7 @@ class TeamBootstrapProxy(AssistantAgent):
                     #     continue
                     yield event  # forward team messages during resume
                 elif isinstance(event, TaskResult):
-                    if TeamFeedBack.NEEDUSER in (event.stop_reason or ""):
+                    if PMCATeamFeedBack.NEEDUSER in (event.stop_reason or ""):
                         # Team again needs user input
                         # Pause state and ask user (loop back in GraphFlow)
                         await self._cfg.app_workbench.set_item(
@@ -113,14 +107,14 @@ class TeamBootstrapProxy(AssistantAgent):
                         )
                         yield Response(
                             chat_message=TextMessage(
-                                source=self.name, content=TeamFeedBack.NEEDUSER
+                                source=self.name, content=PMCATeamFeedBack.NEEDUSER
                             )
                         )
                         return
-                    elif TeamFeedBack.FINISHED in (event.stop_reason or ""):
+                    elif PMCATeamFeedBack.FINISHED in (event.stop_reason or ""):
                         yield Response(
                             chat_message=TextMessage(
-                                source=self.name, content=TeamFeedBack.FINISHED
+                                source=self.name, content=PMCATeamFeedBack.FINISHED
                             )
                         )
 
@@ -150,7 +144,7 @@ class TeamBootstrapProxy(AssistantAgent):
                 yield event  # stream out the agent/tool messages
             elif isinstance(event, TaskResult):
                 # Run ended (either finished or paused by NEEDUSER)
-                if TeamFeedBack.NEEDUSER in (event.stop_reason or ""):
+                if PMCATeamFeedBack.NEEDUSER in (event.stop_reason or ""):
                     # Save state for later resume
                     await self._cfg.app_workbench.set_item(
                         self.TEAM_STATE_KEY,
@@ -159,14 +153,14 @@ class TeamBootstrapProxy(AssistantAgent):
                     # Ask user for input (GraphFlow will route this to user)
                     yield Response(
                         chat_message=TextMessage(
-                            source=self.name, content=TeamFeedBack.NEEDUSER
+                            source=self.name, content=PMCATeamFeedBack.NEEDUSER
                         )
                     )
                     return  # pause execution here
-                elif TeamFeedBack.FINISHED in (event.stop_reason or ""):
+                elif PMCATeamFeedBack.FINISHED in (event.stop_reason or ""):
                     yield Response(
                         chat_message=TextMessage(
-                            source=self.name, content=TeamFeedBack.FINISHED
+                            source=self.name, content=PMCATeamFeedBack.FINISHED
                         )
                     )
 

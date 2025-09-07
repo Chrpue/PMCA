@@ -16,7 +16,7 @@ try:
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
 
-    from base.memory.factory import PMCAMirixMemoryManager
+    from core.memory.factory import PMCAMirixMemoryManager
 except ImportError as e:
     print(
         f"Error: 无法导入项目模块。请确保此脚本位于您项目根目录的 'scripts/knowledge' 子目录下。"
@@ -142,4 +142,3 @@ async def main():
 if __name__ == "__main__":
     setup_logger()
     asyncio.run(main())
-

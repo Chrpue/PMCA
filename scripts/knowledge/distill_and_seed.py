@@ -19,8 +19,8 @@ try:
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
 
-    from base.knowledge.factory import PMCALightRAGClient
-    from base.memory.factory import PMCAMirixMemoryManager
+    from core.knowledge.factory import PMCALightRAGClient
+    from core.memory.factory import PMCAMirixMemoryManager
     from client import LLMFactory, ProviderType, DutyType
     from autogen_agentchat.messages import UserMessage
     from autogen_core.models import SystemMessage
@@ -276,4 +276,3 @@ async def main():
 if __name__ == "__main__":
     setup_logger()
     asyncio.run(main())
-

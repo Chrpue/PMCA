@@ -1,6 +1,6 @@
 import asyncio
-from base.knowledge.distill.distill_config import PMCADistillationConfig
-from base.knowledge.distill.distill_pipeline_rich import PMCADistillationPipelineRich
+from core.knowledge.distill.distill_config import PMCADistillationConfig
+from core.knowledge.distill.distill_pipeline_rich import PMCADistillationPipelineRich
 
 cfg = PMCADistillationConfig(topic_top_k=8, retrieval_top_k=8, chunk_top_k=4)
 pipeline = PMCADistillationPipelineRich(cfg)

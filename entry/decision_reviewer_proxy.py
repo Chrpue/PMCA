@@ -5,7 +5,7 @@ from autogen_agentchat.base import Response
 from autogen_core import CancellationToken
 from autogen_agentchat.messages import BaseAgentEvent, BaseChatMessage
 
-from base.agents.special_agents import PMCADecision
+from core.assistant.special_agents import PMCADecision
 
 
 class DecisionReviewerProxy(AssistantAgent):

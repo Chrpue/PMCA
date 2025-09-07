@@ -4,7 +4,7 @@ from autogen_agentchat.ui import Console
 from autogen_core.memory import MemoryContent, MemoryMimeType
 from autogen_ext.memory.mem0 import Mem0Memory
 from client import LLMFactory, ProviderType, DutyType
-from base.memory.factory import PMCAMem0LocalService
+from core.memory.factory import PMCAMem0LocalService
 
 # Initialize Mem0 cloud memory (requires API key)
 # For local deployment, use is_cloud=False with appropriate config

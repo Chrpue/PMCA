@@ -44,8 +44,8 @@ except ImportError:
     pass
 
 try:
-    from base.knowledge.factory import PMCALightRAGClient
-    from base.memory.factory import PMCAMem0LocalService
+    from core.knowledge.factory import PMCALightRAGClient
+    from core.memory.factory import PMCAMem0LocalService
     from client import LLMFactory, ProviderType, DutyType
     from autogen_agentchat.messages import UserMessage
     from autogen_core.models import SystemMessage
