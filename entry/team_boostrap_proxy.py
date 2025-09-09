@@ -10,6 +10,8 @@ from autogen_agentchat.messages import (
 )
 
 
+from base.runtime.system_workbench import PMCATaskContext
+from core.client.llm_factory import DutyType, ProviderType
 from core.team.factory import PMCATeamExecutor, PMCATeamFeedBack
 from core.team import PMCATeamMap
 from core.team import PMCASwarm
@@ -20,10 +22,15 @@ class TeamBootstrapProxy(AssistantAgent):
 
     TEAM_STATE_KEY = "team_state"  # Workbench 键名：存储暂停时的团队状态
 
-    def __init__(self, name: str, cfg, llm_cfg):
-        super().__init__(name=name, model_client=llm_cfg.model_client)
-        self._cfg = cfg
-        self._llm_cfg = llm_cfg
+    def __init__(self, name: str, task_ctx: PMCATaskContext):
+        super().__init__(
+            name=name,
+            model_client=task_ctx.llm_factory.client(
+                ProviderType(task_ctx.task_model_provider),
+                DutyType.BASE,
+            ),
+        )
+        self._task_ctx = task_ctx
         self._team_factory: PMCASwarm | None = None
         self._team_executor: PMCATeamExecutor | None = None
 
@@ -31,7 +38,7 @@ class TeamBootstrapProxy(AssistantAgent):
         """确保已根据决策结果创建团队执行器。"""
         if self._team_executor is not None:
             return  # 团队已创建（未完成或暂停状态）
-        decision_result = await self._cfg.app_workbench.get_item("entry_decision")
+        decision_result = await self._task_ctx.task_workbench.get_item("entry_decision")
         if decision_result is None:
             raise RuntimeError("TeamBootstrapProxy: 缺少 entry_decision 决策结果")
         if not decision_result.team:

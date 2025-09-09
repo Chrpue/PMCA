@@ -7,8 +7,11 @@ from autogen_agentchat.ui import Console
 from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermination
 from autogen_agentchat.teams import RoundRobinGroupChat
 
+from base.configs import EnvConfig
+from base.runtime.system_workbench import PMCATaskContext
 from core.assistant.factory import PMCAAgentFactory
 from core.assistant.factory import PMCAAgentMetadata
+from core.client.llm_factory import ProviderType
 
 
 class TeamDesicionResponse(BaseModel):
@@ -251,18 +254,20 @@ class PMCADecision:
             )
 
     @staticmethod
-    async def obtain_team_decision_components(main_cfg, llm_cfg):
-        if llm_cfg.llm_support_structured:
-            pmca_team_decision = main_cfg.factory.create_agent(
+    async def obtain_team_decision_components(task_ctx: PMCATaskContext):
+        if task_ctx.llm_factory.supports_structured(
+            ProviderType(task_ctx.task_model_provider), task_ctx.task_model_name
+        ):
+            pmca_team_decision = task_ctx.agent_factory.create_agent(
                 "PMCATeamDecision",
             )
         else:
-            pmca_team_decision = main_cfg.factory.create_agent(
+            pmca_team_decision = task_ctx.agent_factory.create_agent(
                 "PMCATeamDecision",
                 reflect_on_tool_use=False,
             )
 
-        pmca_team_decision_critic = main_cfg.factory.create_agent(
+        pmca_team_decision_critic = task_ctx.agent_factory.create_agent(
             "PMCATeamDecisionCritic",
             reflect_on_tool_use=False,
         )
@@ -270,17 +275,20 @@ class PMCADecision:
         return pmca_team_decision, pmca_team_decision_critic
 
     @staticmethod
-    async def obtain_agents_decision_components(main_cfg, llm_cfg):
-        if llm_cfg.llm_support_structured:
-            pmca_agents_decision = main_cfg.factory.create_agent(
+    async def obtain_agents_decision_components(task_ctx: PMCATaskContext):
+        if task_ctx.llm_factory.supports_structured(
+            ProviderType(task_ctx.task_model_provider), task_ctx.task_model_name
+        ):
+            pmca_agents_decision = task_ctx.agent_factory.create_agent(
                 "PMCAAgentsDecision",
+                output_content_type=AgentsDesicionResponse,
             )
         else:
-            pmca_agents_decision = main_cfg.factory.create_agent(
+            pmca_agents_decision = task_ctx.agent_factory.create_agent(
                 "PMCAAgentsDecision",
                 reflect_on_tool_use=False,
             )
-        pmca_agents_decision_critic = main_cfg.factory.create_agent(
+        pmca_agents_decision_critic = task_ctx.agent_factory.create_agent(
             "PMCAAgentsDecisionCritic",
             reflect_on_tool_use=False,
         )
@@ -288,56 +296,43 @@ class PMCADecision:
         return pmca_agents_decision, pmca_agents_decision_critic
 
     @staticmethod
-    async def obtain_decision_reviewer_components(main_cfg, llm_cfg):
-        if llm_cfg.llm_support_structured:
-            pmca_decision_reviewer = main_cfg.factory.create_agent(
+    async def obtain_decision_reviewer_components(task_ctx: PMCATaskContext):
+        if task_ctx.llm_factory.supports_structured(
+            ProviderType(task_ctx.task_model_provider), task_ctx.task_model_name
+        ):
+            pmca_decision_reviewer = task_ctx.agent_factory.create_agent(
                 "PMCADecisionReviewer",
                 output_content_type=DecisionResponse,
             )
         else:
-            pmca_decision_reviewer = main_cfg.factory.create_agent(
+            pmca_decision_reviewer = task_ctx.agent_factory.create_agent(
                 "PMCADecisionReviewer",
             )
 
         return pmca_decision_reviewer
 
     @staticmethod
-    async def agents_decision_processing(pipeline_config, llm_config):
-        if llm_config.llm_support_structured:
-            pmca_agents_decision_agent = pipeline_config.factory.create_agent(
-                "PMCAAgentsDecision",
-                output_content_type=AgentsDesicionResponse,
-            )
-        else:
-            pmca_agents_decision_agent = pipeline_config.factory.create_agent(
-                "PMCAAgentsDecision",
-            )
-
-        pmca_agents_decision_critic_agent = pipeline_config.factory.create_agent(
-            "PMCAAgentsDecisionCritic", memory=[pipeline_config.agents_memory]
-        )
-
+    async def agents_decision_processing(task_ctx: PMCATaskContext):
         team = RoundRobinGroupChat(
-            [
-                pmca_agents_decision_agent,
-                pmca_agents_decision_critic_agent,
-            ],
+            list(await PMCADecision.obtain_agents_decision_components(task_ctx)),
             MaxMessageTermination(max_messages=34),  # type: ignore
         )
 
         agents_desc = "\n".join(
             [
                 f"**{partner}** {info.get('duty', '')}"
-                for partner, info in pipeline_config.function_assistant_list.items()
+                for partner, info in task_ctx.agent_factory.list_functional_agents().items()
             ]
         )
-        task = f"用户任务：{pipeline_config.task}\n目前可以协助完成任务的候选助手列表如下：\n{agents_desc}"
+        task = f"用户任务：{task_ctx.task_mission}\n目前可以协助完成任务的候选助手列表如下：\n{agents_desc}"
         logger.success(task)
 
         task_result = await team.run(task=task)
 
         partners_decision_content = ""
-        if llm_config.llm_support_structured:
+        if task_ctx.llm_factory.supports_structured(
+            ProviderType(task_ctx.task_model_provider), task_ctx.task_model_name
+        ):
             for msg in task_result.messages:
                 if (
                     msg.source == "PMCAAgentsDecision"
@@ -354,37 +349,20 @@ class PMCADecision:
         return partners_decision_content
 
     @staticmethod
-    async def team_decision_processing(pipeline_config, llm_config):
-        if llm_config.llm_support_structured:
-            pmca_team_decision_agent = pipeline_config.factory.create_agent(
-                "PMCATeamDecision",
-                memory=[pipeline_config.agents_memory],
-                output_content_type=TeamDesicionResponse,
-            )
-        else:
-            pmca_team_decision_agent = pipeline_config.factory.create_agent(
-                "PMCATeamDecision",
-                memory=[pipeline_config.agents_memory],
-            )
-
-        pmca_team_decision_critic_agent = pipeline_config.factory.create_agent(
-            "PMCATeamDecisionCritic", memory=[pipeline_config.agents_memory]
-        )
-
+    async def team_decision_processing(task_ctx: PMCATaskContext):
         team = RoundRobinGroupChat(
-            [
-                pmca_team_decision_agent,
-                pmca_team_decision_critic_agent,
-            ],
-            TextMentionTermination("APPROVE") | MaxMessageTermination(max_messages=4),  # type: ignore
+            list(await PMCADecision.obtain_team_decision_components(task_ctx)),
+            MaxMessageTermination(max_messages=34),  # type: ignore
         )
 
         # stream = await Console(team.run_stream(task=pipeline_config.task))
-        task_result = await team.run(task=pipeline_config.task)
+        task_result = await team.run(task=task_ctx.task_mission)
 
         team_decision_content = ""
 
-        if llm_config.llm_support_structured:
+        if task_ctx.llm_factory.supports_structured(
+            ProviderType(task_ctx.task_model_provider), task_ctx.task_model_name
+        ):
             for msg in task_result.messages:
                 if (
                     msg.source == "PMCATeamDecision"

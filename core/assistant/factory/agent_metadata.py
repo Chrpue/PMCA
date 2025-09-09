@@ -12,3 +12,5 @@ class PMCAAgentMetadata:
     duty: str = ""
 
     required_mcp_keys: List[str] = []
+
+    model_duty_type: Optional[str] = None

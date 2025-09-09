@@ -7,11 +7,15 @@ from .agent_metadata import PMCAAgentMetadata
 from autogen_ext.tools.mcp import McpWorkbench
 
 from core.memory.factory.mem0 import PMCAMem0LocalService
+from core.client import LLMFactory, ProviderType, DutyType
 
 from loguru import logger
 
 
-PMCASpecialAgents = ["PMCACodeGenExec"]
+PMCASpecialAgents = [
+    "PMCACodeGenExec",
+]
+
 PMCAExcludeAgents = [
     "PMCATeamDecision",
     "PMCAAgentsDecision",
@@ -28,8 +32,10 @@ class PMCAAgentFactory(PMCAFactoryConfig):
 
     _registry: Dict[str, Type[PMCAAgentMetadata]] = {}
 
-    def __init__(self, model_client):
-        super().__init__(model_client)
+    def __init__(self, provider: ProviderType, llm_factory: LLMFactory):
+        super().__init__()
+        self._provider = provider
+        self._llm_factory = llm_factory
 
     @property
     def registry(cls):
@@ -52,12 +58,13 @@ class PMCAAgentFactory(PMCAFactoryConfig):
                 "description": meta_cls.description,
                 "duty": meta_cls.duty,
                 "avaliable_tools": meta_cls.required_mcp_keys,
+                "model_type": meta_cls.model_duty_type,
             }
             for biz_type, meta_cls in cls._registry.items()
         }
 
     @classmethod
-    def list_function_agents(cls):
+    def list_functional_agents(cls):
         """obtain all function agents except team decision agents"""
         return {
             key: value
@@ -72,39 +79,32 @@ class PMCAAgentFactory(PMCAFactoryConfig):
         partners_desc = "\n".join(
             [
                 f"- {info.get('chinese_name', '')}: {info.get('duty', '')}"
-                for partner, info in PMCAAgentFactory.list_function_agents().items()
+                for partner, info in PMCAAgentFactory.list_functional_agents().items()
                 if partner in participants
             ]
         )
 
         return partners_desc
 
-    def memory_workbench(self):
-        filtered_mcp_params = [
-            value
-            for key, value in self._mcp_server_dict.items()
-            if key == "MCP_SERVER_GRAPHMEMORY"
-        ]
-        return McpWorkbench(filtered_mcp_params[-1])
-
-    def team_decision_memory_workbench(self):
-        filtered_mcp_params = [
-            value
-            for key, value in self._mcp_server_dict.items()
-            if key == "MCP_SERVER_LIGHTRAG_APP"
-        ]
-        return McpWorkbench(filtered_mcp_params[-1])
-
-    def agents_decision_memory_workbench(self):
-        filtered_mcp_params = [
-            value
-            for key, value in self._mcp_server_dict.items()
-            if key == "MCP_SERVER_LIGHTRAG_APP"
-        ]
-        return McpWorkbench(filtered_mcp_params[-1])
+    # def team_decision_memory_workbench(self):
+    #     filtered_mcp_params = [
+    #         value
+    #         for key, value in self._mcp_server_dict.items()
+    #         if key == "MCP_SERVER_LIGHTRAG_APP"
+    #     ]
+    #     return McpWorkbench(filtered_mcp_params[-1])
+    #
+    # def agents_decision_memory_workbench(self):
+    #     filtered_mcp_params = [
+    #         value
+    #         for key, value in self._mcp_server_dict.items()
+    #         if key == "MCP_SERVER_LIGHTRAG_APP"
+    #     ]
+    #     return McpWorkbench(filtered_mcp_params[-1])
 
     def _filtered_workbench(self, biz_type):
         """Responsible for filtering the workbench according to the MCP list defined by the agent"""
+
         meta = self._registry[biz_type]()
         if meta.required_mcp_keys:
             filtered_mcp_params = [
@@ -127,11 +127,15 @@ class PMCAAgentFactory(PMCAFactoryConfig):
 
         meta = self._registry[biz_type]()
 
+        model_duty_type = getattr(meta, "model_duty_type", DutyType.BASE)
+
+        model_client = self._llm_factory.client(self._provider, model_duty_type)
+
         memory = PMCAMem0LocalService.memory(meta.name or biz_type)
 
         agent_args = {
             "name": meta.name or biz_type,
-            "model_client": self._model_client,
+            "model_client": model_client,
             "system_message": meta.system_message,
             "description": meta.description,
             "model_client_stream": self.model_client_stream,

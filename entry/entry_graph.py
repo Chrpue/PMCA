@@ -15,6 +15,7 @@ from autogen_agentchat.ui import Console
 from autogen_agentchat.messages import StructuredMessage
 from autogen_core.tools import StaticWorkbench, ToolResult, ToolSchema
 
+from base.runtime.system_workbench import PMCATaskContext
 from core.team.factory import PMCATeamFeedBack
 from core.assistant.special_agents import PMCADecision, PMCAUser
 from core.assistant.special_agents import DecisionResponse
@@ -22,32 +23,32 @@ from entry.team_boostrap_proxy import TeamBootstrapProxy
 from entry.decision_reviewer_proxy import DecisionReviewerProxy
 
 
-class APPWorkbench(StaticWorkbench):
-    """Light-Weight key-value workbench with no additional tools."""
-
-    def __init__(self) -> None:
-        super().__init__(tools=[])
-        self._kv: dict[str, Any] = {}
-
-    async def set_item(self, key: str, value: Any) -> None:
-        self._kv[key] = value
-
-    async def get_item(self, key: str) -> Any:
-        return self._kv.get(key)
-
-    async def list_tools(self) -> List[ToolSchema]:
-        return []
-
-    async def call_tool(
-        self,
-        name: str,
-        arguments: Dict[str, Any],
-        call_id: str | None = None,
-        caller=None,
-        message=None,
-        **kwargs,
-    ) -> ToolResult:
-        raise RuntimeError("在Workbench中没有可用的工具")
+# class APPWorkbench(StaticWorkbench):
+#     """Light-Weight key-value workbench with no additional tools."""
+#
+#     def __init__(self) -> None:
+#         super().__init__(tools=[])
+#         self._kv: dict[str, Any] = {}
+#
+#     async def set_item(self, key: str, value: Any) -> None:
+#         self._kv[key] = value
+#
+#     async def get_item(self, key: str) -> Any:
+#         return self._kv.get(key)
+#
+#     async def list_tools(self) -> List[ToolSchema]:
+#         return []
+#
+#     async def call_tool(
+#         self,
+#         name: str,
+#         arguments: Dict[str, Any],
+#         call_id: str | None = None,
+#         caller=None,
+#         message=None,
+#         **kwargs,
+#     ) -> ToolResult:
+#         raise RuntimeError("在Workbench中没有可用的工具")
 
 
 class PMCAEntryGraph:
@@ -104,25 +105,25 @@ class PMCAEntryGraph:
         )
 
     @staticmethod
-    async def begin(cfg, llm_cfg):
+    async def begin(task_ctx: PMCATaskContext):
         """Entry"""
 
-        await PMCADecision.obtain_agents_duties(cfg)
+        await PMCADecision.obtain_agents_duties(task_ctx)
         (
             team_decision,
             team_decision_critic,
-        ) = await PMCADecision.obtain_team_decision_components(cfg, llm_cfg)
+        ) = await PMCADecision.obtain_team_decision_components(task_ctx)
 
         (
             agents_decision,
             agents_decision_critic,
-        ) = await PMCADecision.obtain_agents_decision_components(cfg, llm_cfg)
+        ) = await PMCADecision.obtain_agents_decision_components(task_ctx)
 
         decision_reviewer = await PMCADecision.obtain_decision_reviewer_components(
-            cfg, llm_cfg
+            task_ctx
         )
 
-        finished = cfg.factory.create_agent("PMCAGraphFinished")
+        finished = task_ctx.agent_factory.create_agent("PMCAGraphFinished")
         user_proxy = PMCAUser().agent
 
         # 包装批评代理，确保按照指定消息流触发
@@ -176,8 +177,8 @@ class PMCAEntryGraph:
             ),
         )
 
-        proxy_decision_reviewer = DecisionReviewerProxy(decision_reviewer, cfg, llm_cfg)
-        team_bootstrap_proxy = TeamBootstrapProxy("PMCATeamBoostrapProxy", cfg, llm_cfg)
+        proxy_decision_reviewer = DecisionReviewerProxy(decision_reviewer, task_ctx)
+        team_bootstrap_proxy = TeamBootstrapProxy("PMCATeamBoostrapProxy", task_ctx)
 
         builder = DiGraphBuilder()
         builder.add_node(user_proxy, activation="any")
