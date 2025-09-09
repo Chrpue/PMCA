@@ -5,7 +5,7 @@ from autogen_agentchat.base import Response
 from autogen_core import CancellationToken
 from autogen_agentchat.messages import BaseAgentEvent, BaseChatMessage
 
-from base.runtime.system_workbench import PMCATaskContext
+from base.runtime.workbench import PMCATaskContext
 from core.assistant.special_agents import PMCADecision
 from core.client.llm_factory import ProviderType
 

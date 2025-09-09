@@ -1,4 +1,3 @@
-import threading
 from loguru import logger
 from dotenv import load_dotenv
 from pydantic import Field
@@ -44,7 +43,11 @@ class PMCAEnvConfig(BaseSettings):
     # --- Ollama 本地服务配置 ---
     OLLAMA_HOST: str
 
-    # ... 此处省略了您其他的配置项 ...
+    # --- Redis Cache配置信息 ---
+    REDIS_HOST: str
+    REDIS_PORT: int
+    REDIS_DB: int
+    REDIS_PASSWORD: str | None
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
@@ -61,4 +64,3 @@ except Exception as e:
         f"FATAL: 配置加载失败，请检查 .env 文件是否完整或存在拼写错误。错误: {e}"
     )
     exit(1)
-

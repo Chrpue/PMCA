@@ -8,7 +8,7 @@ from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermi
 from autogen_agentchat.teams import RoundRobinGroupChat
 
 from base.configs import EnvConfig
-from base.runtime.system_workbench import PMCATaskContext
+from base.runtime.workbench import PMCATaskContext
 from core.assistant.factory import PMCAAgentFactory
 from core.assistant.factory import PMCAAgentMetadata
 from core.client.llm_factory import ProviderType
