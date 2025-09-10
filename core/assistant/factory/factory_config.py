@@ -3,7 +3,7 @@ from typing import Union, List, Dict
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_ext.models.ollama import OllamaChatCompletionClient
 from autogen_ext.tools.mcp import SseServerParams
-from base.configs import EnvConfig
+from base.configs import PMCASystemEnvConfig
 
 
 class PMCAFactoryConfig:
@@ -19,7 +19,7 @@ class PMCAFactoryConfig:
         mcp_server_dict = {}
         mcp_server_configs = {
             key: value
-            for key, value in EnvConfig.model_dump().items()
+            for key, value in PMCASystemEnvConfig.model_dump().items()
             if key.startswith("MCP_SERVER_")
         }
 

@@ -1,27 +1,24 @@
 import asyncio
 from autogen_agentchat.ui import Console
-from autogen_ext.models.ollama import OllamaChatCompletionClient
-from autogen_ext.models.openai import OpenAIChatCompletionClient
 from loguru import logger
 
-from typing import ClassVar, Union, cast, Dict, Any
-
-from pydantic import BaseModel, ConfigDict, model_validator
-
-from base.runtime import PMCARuntime
-from core.client import LLMFactory, ProviderType, DutyType
-from core.assistant.factory import PMCAAgentFactory
-
-from entry import PMCAEntryGraph, APPWorkbench
+from base.runtime.system_runtime import PMCARuntime
+from entry.selector_group import build_selector_group
 
 
 async def main():
     runtime = PMCARuntime()
     await runtime.initialize()
 
-    task_ctx = runtime.create_task_context()
+    # 你可以把 mission 文本通过 CLI/HTTP 传进来，这里先留空
+    task_ctx = runtime.create_task_context(mission="")
 
-    await PMCAEntryGraph.begin(task_ctx)
+    group = await build_selector_group(task_ctx)
+
+    # 让 Planner 先开场：在实际实现里，Planner 会读 task_ctx.task_mission 并给出 steps 及 route_hint
+    user_instruction = "请描述你的任务或需求。"
+    logger.info("启动 SelectorGroupChat ...")
+    await Console(group.run_stream(task=user_instruction))
 
 
 if __name__ == "__main__":

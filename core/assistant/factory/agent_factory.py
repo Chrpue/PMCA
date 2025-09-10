@@ -7,7 +7,7 @@ from .agent_metadata import PMCAAgentMetadata
 from autogen_ext.tools.mcp import McpWorkbench
 
 from core.memory.factory.mem0 import PMCAMem0LocalService
-from core.client import LLMFactory, ProviderType, DutyType
+from core.client import LLMFactory, ProviderType, AbilityType
 
 from loguru import logger
 
@@ -127,9 +127,9 @@ class PMCAAgentFactory(PMCAFactoryConfig):
 
         meta = self._registry[biz_type]()
 
-        model_duty_type = getattr(meta, "model_duty_type", DutyType.BASE)
+        model_ability = getattr(meta, "ability", AbilityType.DEFAULT)
 
-        model_client = self._llm_factory.client(self._provider, model_duty_type)
+        model_client = self._llm_factory.client(AbilityType(model_ability))
 
         memory = PMCAMem0LocalService.memory(meta.name or biz_type)
 

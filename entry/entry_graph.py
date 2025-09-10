@@ -15,7 +15,7 @@ from autogen_agentchat.ui import Console
 from autogen_agentchat.messages import StructuredMessage
 from autogen_core.tools import StaticWorkbench, ToolResult, ToolSchema
 
-from base.runtime.workbench import PMCATaskContext
+from base.runtime.system_workbench import PMCATaskContext
 from core.team.factory import PMCATeamFeedBack
 from core.assistant.special_agents import PMCADecision, PMCAUser
 from core.assistant.special_agents import DecisionResponse

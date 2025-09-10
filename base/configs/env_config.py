@@ -49,6 +49,25 @@ class PMCAEnvConfig(BaseSettings):
     REDIS_DB: int
     REDIS_PASSWORD: str | None
 
+    # Mcp-Server Infos
+    MCP_TIMEOUT: int
+    MCP_SERVER_EXCEL: str
+    MCP_SERVER_FILESYSTEM: str
+    MCP_SERVER_SEQUENTIALTHINKING: str
+    MCP_SERVER_VEGALITE: str
+    MCP_SERVER_ANALYSIS: str
+
+    # =======================================================================
+    # LightRAG Server and MCP server
+    # =======================================================================
+    MCP_SERVER_LIGHTRAG_APP: str
+    MCP_SERVER_LIGHTRAG_STRATETY: str
+    MCP_SERVER_LIGHTRAG_GAS: str
+
+    LIGHTRAG_SERVER_STRATETY: str
+    LIGHTRAG_SERVER_APP: str
+    LIGHTRAG_SERVER_GAS: str
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
