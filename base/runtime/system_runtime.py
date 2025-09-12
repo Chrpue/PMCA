@@ -4,6 +4,7 @@ from loguru import logger
 from redis import asyncio as aioredis
 
 from base.configs import PMCASystemEnvConfig
+from base.configs.env_config import PMCAEnvConfig
 from core.client.llm_factory import LLMFactory, ProviderType
 from core.assistant.factory import PMCAAgentFactory
 from core.memory.factory.mem0 import PMCAMem0LocalService
@@ -83,6 +84,7 @@ class PMCARuntime:
         return PMCATaskContext(
             task_id=task_id,
             task_mission=mission,
+            task_env=PMCASystemEnvConfig,
             task_workbench=workbench,
             agent_factory=self.agent_factory,
             llm_factory=self.llm_factory,

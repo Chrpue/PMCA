@@ -27,7 +27,7 @@ PMCAExcludeAgents = [
 ]
 
 
-class PMCAAgentFactory(PMCAFactoryConfig):
+class PMCAAssistantFactory(PMCAFactoryConfig):
     """AssistantAgent Factory"""
 
     _registry: Dict[str, Type[PMCAAgentMetadata]] = {}
@@ -68,7 +68,7 @@ class PMCAAgentFactory(PMCAFactoryConfig):
         """obtain all function agents except team decision agents"""
         return {
             key: value
-            for key, value in PMCAAgentFactory.list_registered_agents().items()
+            for key, value in PMCAAssistantFactory.list_registered_agents().items()
             if key not in PMCAExcludeAgents
         }
 
@@ -79,7 +79,7 @@ class PMCAAgentFactory(PMCAFactoryConfig):
         partners_desc = "\n".join(
             [
                 f"- {info.get('chinese_name', '')}: {info.get('duty', '')}"
-                for partner, info in PMCAAgentFactory.list_functional_agents().items()
+                for partner, info in PMCAAssistantFactory.list_functional_agents().items()
                 if partner in participants
             ]
         )
@@ -131,6 +131,8 @@ class PMCAAgentFactory(PMCAFactoryConfig):
 
         model_client = self._llm_factory.client(AbilityType(model_ability))
 
+        mcp_workbench = self._filtered_workbench(biz_type) or None
+
         memory = PMCAMem0LocalService.memory(meta.name or biz_type)
 
         agent_args = {
@@ -140,16 +142,12 @@ class PMCAAgentFactory(PMCAFactoryConfig):
             "description": meta.description,
             "model_client_stream": self.model_client_stream,
             "tool_call_summary_format": self.tool_call_summary_format,
+            "workbench": mcp_workbench,
             "memory": [memory],
             **kwargs,
         }
 
-        if biz_type in PMCASpecialAgents:
-            logger.info(
-                f"提示信息: 正在为特殊智能体 '{biz_type}' 创建实例，不分配默认工作台。"
-            )
-        else:
-            agent_args["workbench"] = self._filtered_workbench(biz_type) or None
+        agent_args["workbench"] = self._filtered_workbench(biz_type) or None
 
         agent = AssistantAgent(**agent_args)
 

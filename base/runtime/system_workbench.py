@@ -7,6 +7,8 @@ from loguru import logger
 from redis.asyncio import Redis
 from autogen_core.tools import StaticWorkbench
 
+from base.configs.env_config import PMCAEnvConfig
+
 
 class _RedisKV:
     """任务级 KV 存储：pmca:task:{task_id} -> Hash"""
@@ -58,6 +60,7 @@ class PMCATaskWorkbench(StaticWorkbench):
 class PMCATaskContext:
     task_id: str
     task_mission: str
+    task_env: PMCAEnvConfig
     task_workbench: PMCATaskWorkbench
     agent_factory: Any
     llm_factory: Any
