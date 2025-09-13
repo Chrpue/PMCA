@@ -62,7 +62,7 @@ class PMCATaskContext:
     task_mission: str
     task_env: PMCAEnvConfig
     task_workbench: PMCATaskWorkbench
-    agent_factory: Any
+    assistant_factory: Any
     llm_factory: Any
 
 

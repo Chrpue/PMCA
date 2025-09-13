@@ -1,3 +1,5 @@
+from typing import Dict
+from autogen_ext.tools.mcp import SseServerParams
 from loguru import logger
 from dotenv import load_dotenv
 from pydantic import Field
@@ -74,6 +76,21 @@ class PMCAEnvConfig(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
+
+    def get_mcp_servers(self) -> Dict[str, SseServerParams]:
+        prefix = "MCP_SERVER_"
+        servers = {}
+
+        for field_name in self.__class__.model_fields:
+            if field_name.startswith(prefix):
+                url = getattr(self, field_name)
+                if not url:
+                    continue
+                servers[field_name] = SseServerParams(
+                    url=url,
+                    timeout=float(self.MCP_TIMEOUT),
+                )
+        return servers
 
 
 try:

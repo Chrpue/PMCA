@@ -1,12 +1,8 @@
-from .agent_factory import PMCAAgentFactory, PMCAExcludeAgents, PMCASpecialAgents
-from .agent_workbench import PMCACombinedWorkbench
-from .agent_metadata import PMCAAgentMetadata
+from .assistant_factory import PMCAAssistantFactory
+from .assistant_config import PMCAAssistantMetadata
 
 
 __all__ = [
-    "PMCAExcludeAgents",
-    "PMCASpecialAgents",
-    "PMCAAgentFactory",
-    "PMCAAgentMetadata",
-    "PMCACombinedWorkbench",
+    "PMCAAssistantFactory",
+    "PMCAAssistantMetadata",
 ]
