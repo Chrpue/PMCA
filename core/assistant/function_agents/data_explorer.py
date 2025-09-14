@@ -1,9 +1,9 @@
-from core.assistant.factory import PMCAAgentFactory
-from core.assistant.factory import PMCAAgentMetadata
+from core.assistant.factory import PMCAAssistantFactory
+from core.assistant.factory import PMCAAssistantMetadata
 
 
-@PMCAAgentFactory.register("PMCADataExplorer")
-class PMCADataExplorer(PMCAAgentMetadata):
+@PMCAAssistantFactory.register("PMCADataExplorer")
+class PMCADataExplorer(PMCAAssistantMetadata):
     description = "一个专门负责数据收集、数据分析、数据可视化的助手."
     system_message = """你是一个负责处理数据、输出分析和数据可视化的助手，有限利用你的工具完成任务.
 你负责的工作应包含:

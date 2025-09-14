@@ -55,16 +55,6 @@ class PMCATaskWorkbench(StaticWorkbench):
         return await self.get_item("team_state")
 
 
-@dataclass
-class PMCATaskContext:
-    task_id: str
-    task_mission: str
-    task_env: PMCAEnvConfig
-    task_workbench: PMCATaskWorkbench
-    assistant_factory: Any
-    llm_factory: Any
-
-
 class PMCATaskWorkbenchManager:
     """简单工厂：创建任务隔离的 Workbench"""
 

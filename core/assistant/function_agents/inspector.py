@@ -1,9 +1,9 @@
-from core.assistant.factory import PMCAAgentFactory
-from core.assistant.factory import PMCAAgentMetadata
+from core.assistant.factory import PMCAAssistantFactory
+from core.assistant.factory import PMCAAssistantMetadata
 
 
-@PMCAAgentFactory.register("PMCAInspector")
-class PMCAInspector(PMCAAgentMetadata):
+@PMCAAssistantFactory.register("PMCAInspector")
+class PMCAInspector(PMCAAssistantMetadata):
     description = "一个专门负责数据收集与处理的助手"
     system_message = """你是一个负责处理数据的助手，善用你的工具完成任务.
 你负责的工作应包含:

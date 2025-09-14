@@ -1,9 +1,9 @@
-from core.assistant.factory import PMCAAgentFactory
-from core.assistant.factory import PMCAAgentMetadata
+from core.assistant.factory import PMCAAssistantFactory
+from core.assistant.factory import PMCAAssistantMetadata
 
 
-@PMCAAgentFactory.register("PMCAFileSurfer")
-class PMCAFileSurfer(PMCAAgentMetadata):
+@PMCAAssistantFactory.register("PMCAFileSurfer")
+class PMCAFileSurfer(PMCAAssistantMetadata):
     description = "一个专门负责本地文件管理的助手"
     system_message = """你是一名文件管理助手，专职执行本地文件系统操作。
 你的能力包括:

@@ -8,10 +8,8 @@ from core.client.llm_factory import LLMFactory
 from core.assistant.factory import PMCAAssistantFactory
 from core.memory.factory.mem0 import PMCAMem0LocalService
 
-from .system_workbench import (
-    PMCATaskWorkbenchManager,
-    PMCATaskContext,
-)
+from .task_context import PMCATaskContext
+from .system_workbench import PMCATaskWorkbenchManager
 
 
 class PMCARuntime:
@@ -74,7 +72,6 @@ class PMCARuntime:
             task_mission=mission,
             task_env=PMCASystemEnvConfig,
             task_workbench=workbench,
-            assistant_factory=None,
             llm_factory=self.llm_factory,
         )
 
