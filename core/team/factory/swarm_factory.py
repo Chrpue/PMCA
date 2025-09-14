@@ -1,6 +1,5 @@
-# core/team/factory/swarm_factory.py (重构)
-
-from typing import List
+from typing import List, Dict, Any
+from autogen_agentchat.base import ChatAgent
 from autogen_agentchat.teams import Swarm
 from autogen_agentchat.conditions import MaxMessageTermination
 
@@ -40,7 +39,7 @@ class PMCASwarmFactory:
             )
 
         # 1. 动态创建所有参与者的实例，并为他们注入 handoffs
-        participants = []
+        participants: List[ChatAgent] = []
         for name in participant_names:
             # Handoffs 列表是除了自己之外的所有其他成员
             dynamic_handoffs = [
@@ -72,3 +71,28 @@ class PMCASwarmFactory:
         )
 
         return swarm_team
+
+    async def resume_swarm(
+        self, swarm: Swarm, saved_state: Dict[str, Any], user_input: str
+    ) -> Swarm:
+        """
+        从保存的状态恢复一个 Swarm 团队，并注入用户的新指令。
+        """
+        # 1. 加载团队之前的状态（消息历史、当前轮次等）
+        await swarm.load_state(saved_state)
+
+        # 2. **关键**: 创建一条新的 HandoffMessage，将用户的输入作为内容，
+        #    并将控制权交还给之前请求用户帮助的智能体。
+        #    我们需要从保存的状态中找到最后一位发言者。
+        last_speaker_name = saved_state.get(
+            "current_speaker", swarm.participants[0].name
+        )
+
+        resume_message = HandoffMessage(
+            source="PMCAUserProxy", target=last_speaker_name, content=user_input
+        )
+
+        # 将这条消息添加到团队的消息线程中，作为恢复后的第一条消息
+        swarm._message_thread.append(resume_message)  # 访问内部成员以注入消息
+
+        return swarm

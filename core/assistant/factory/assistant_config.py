@@ -1,5 +1,3 @@
-# core/assistant/factory/agent_metadata.py (最终版)
-
 from typing import List, Optional, Dict, Any, Literal
 from pydantic import Field
 from core.client import AbilityType

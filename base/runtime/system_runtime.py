@@ -4,7 +4,7 @@ from loguru import logger
 from redis import asyncio as aioredis
 
 from base.configs import PMCASystemEnvConfig
-from core.client.llm_factory import LLMFactory, ProviderType
+from core.client.llm_factory import LLMFactory
 from core.assistant.factory import PMCAAssistantFactory
 from core.memory.factory.mem0 import PMCAMem0LocalService
 
@@ -19,6 +19,9 @@ class PMCARuntime:
 
     _instance = None
     _init_lock = asyncio.Lock()
+
+    redis: aioredis.Redis
+    llm_factory: LLMFactory
 
     def __new__(cls):
         if cls._instance is None:
@@ -41,50 +44,42 @@ class PMCARuntime:
             await self.redis.ping()
             logger.success("Redis connected.")
 
-            # 2) LLM 工厂 / Provider
-            #   - 优先使用 DEFAULT_PROVIDER（如果没有就回退到 LLM_TYPE）
-            provider_str = (
-                getattr(PMCASystemEnvConfig, "DEFAULT_PROVIDER", None)
-                or PMCASystemEnvConfig.LLM_TYPE
-            )
-            self.provider = ProviderType(provider_str.lower())
             self.llm_factory = LLMFactory()
 
-            # 3) Agent 工厂
-            self.assistant_factory = PMCAAssistantFactory(
-                provider=self.provider,
-                llm_factory=self.llm_factory,
-            )
+            await self._initialize_assistants_registry()
 
-            # 4) 载入注册表
-            await self._initialize_agent_registry()
-
-            # 5) 初始化各 Agent 的 mem0
-            await self._initialize_agent_memories()
+            await self._initialize_assistants_memories()
 
             self._initialized = True
             logger.success("PMCARuntime initialized.")
 
-    async def _initialize_agent_registry(self) -> None:
+    async def _initialize_assistants_registry(self) -> None:
         """读取 AgentFactory 注册表并缓存。"""
-        self.registered_agents = PMCAAgentFactory.list_registered_agents()
-        self.functional_agents = PMCAAgentFactory.list_functional_agents()
-        logger.info(f"Registered agents: {list(self.registered_agents.keys())}")
+        self._registered_assistants = (
+            PMCAAssistantFactory.get_all_registered_assistants()
+        )
+        logger.info(f"Registered agents: {list(self._registered_assistants.keys())}")
 
-    async def _initialize_agent_memories(self) -> None:
+    async def _initialize_assistants_memories(self) -> None:
         """为每个已注册智能体初始化 mem0。"""
-        for agent_name in self.registered_agents.keys():
+        for agent_name in self._registered_assistants.keys():
             PMCAMem0LocalService.memory(agent_name)
 
     def create_task_context(self, mission: str = "") -> PMCATaskContext:
         """创建任务上下文（任务隔离）。"""
         task_id = uuid.uuid4().hex[:8]
         workbench = PMCATaskWorkbenchManager.create_workbench(task_id, self.redis)
-        return PMCATaskContext(
+        task_ctx = PMCATaskContext(
             task_id=task_id,
             task_mission=mission,
             task_env=PMCASystemEnvConfig,
             task_workbench=workbench,
-            assitant_factory=self.assistant_factory,
+            assistant_factory=None,
             llm_factory=self.llm_factory,
         )
+
+        assistant_factory = PMCAAssistantFactory(ctx=task_ctx)
+        task_ctx.assistant_factory = assistant_factory
+        logger.success(f"Task context [{task_id}] created successfully.")
+
+        return task_ctx
