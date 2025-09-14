@@ -1,5 +1,3 @@
-# core/assistant/factory/agent_factory.py (最终版)
-
 from typing import Type, Dict, Any, List, Optional
 from autogen_agentchat.agents import AssistantAgent
 from autogen_core.tools import BaseTool, FunctionTool, Workbench

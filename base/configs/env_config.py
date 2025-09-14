@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Literal
 from autogen_ext.tools.mcp import SseServerParams
 from loguru import logger
 from dotenv import load_dotenv
@@ -17,6 +17,9 @@ class PMCAEnvConfig(BaseSettings):
 
     # --- 项目与交互配置 ---
     PROJECT_NAME: str
+
+    # --- 交互模式 ---
+    INTERACTION_MODE: Literal["console", "service"]
 
     # --- LLM 服务模式 ---
     LLM_TYPE: str = Field(
