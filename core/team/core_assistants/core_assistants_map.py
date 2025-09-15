@@ -2,5 +2,5 @@ from enum import StrEnum
 
 
 class PMCACoreAssistants(StrEnum):
-    ORCHESTRATOR = "PMCATeamPlanner"
+    ORCHESTRATOR = "PMCAOrchestrator"
     USER_PROXY = "PMCAUserProxy"

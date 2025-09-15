@@ -1,8 +1,8 @@
-from core.assistant.factory import PMCAAgentFactory, PMCAAgentMetadata
+from core.assistant.factory import PMCAAssistantFactory, PMCAAssistantMetadata
 
 
-@PMCAAgentFactory.register("PMCACodeGenExec")
-class PMCACodeGenExec(PMCAAgentMetadata):
+@PMCAAssistantFactory.register("PMCACodeGenExec")
+class PMCACodeGenExec(PMCAAssistantMetadata):
     description = "一个通用且强大的 AI 助手，具备出色的语言能力、Python 编程技能和 Linux 命令行操作能力(有些超出现有助手能力范围的工作，可以尝试生成代码来解决)."
     system_message = """
 你是一个专职负责代码生成与执行的助手，当被指派任务后使用工具完成任务.

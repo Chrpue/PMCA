@@ -9,13 +9,12 @@ from .core_assistants_map import PMCACoreAssistants
 from core.assistant.factory import PMCAAssistantFactory
 
 
-@PMCAAssistantFactory.register(PMCACoreAssistants.ORCHESTRATOR)
+@PMCAAssistantFactory.register(PMCACoreAssistants.ORCHESTRATOR.value)
 class PMCAOrchestrator(PMCAAssistantMetadata):
     """
     顶层战略规划师，负责任务分解和执行单元的调度。
     """
 
-    name: str = PMCACoreAssistants.ORCHESTRATOR
     description: str = "一个顶层的战略规划与任务协调智能体，负责理解用户意图，制定执行计划，并协调其他成员完成任务。"
 
     system_message: str = """

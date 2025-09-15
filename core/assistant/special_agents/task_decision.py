@@ -8,9 +8,9 @@ from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermi
 from autogen_agentchat.teams import RoundRobinGroupChat
 
 from base.configs import PMCASystemEnvConfig
-from base.runtime.system_workbench import PMCATaskContext
-from core.assistant.factory import PMCAAgentFactory
-from core.assistant.factory import PMCAAgentMetadata
+from base.runtime import PMCATaskContext
+from core.assistant.factory import PMCAAssistantFactory
+from core.assistant.factory import PMCAAssistantMetadata
 from core.client.llm_factory import ProviderType
 
 
@@ -43,8 +43,8 @@ class DecisionResponse(BaseModel):
     )
 
 
-@PMCAAgentFactory.register("PMCATeamDecision")
-class PMCATeamDecision(PMCAAgentMetadata):
+@PMCAAssistantFactory.register("PMCATeamDecision")
+class PMCATeamDecision(PMCAAssistantMetadata):
     description = "一个负责选择团队组件的助手"
     system_message = """
 你是一位顶级的“多智能体协作策略师”，你的任务是为给定的用户任务，选择最合适的团队协作模式。
@@ -74,8 +74,8 @@ class PMCATeamDecision(PMCAAgentMetadata):
 """
 
 
-@PMCAAgentFactory.register("PMCAAgentsDecision")
-class PMCAAgentsDecision(PMCAAgentMetadata):
+@PMCAAssistantFactory.register("PMCAAgentsDecision")
+class PMCAAgentsDecision(PMCAAssistantMetadata):
     description = "一个负责根据用户任务选择由哪些可合作的助手能够参与本次任务的筛选人"
     system_message = """你是一位顶级的AI智能体团队“首席任务官”（Chief Task Officer）。你的核心职责是深刻理解用户下达的任务，并结合我们知识库中检索到的“历史智慧”（上下文），精准地规划出完成任务所需的角色和核心能力。
 
@@ -104,8 +104,8 @@ class PMCAAgentsDecision(PMCAAgentMetadata):
 """
 
 
-@PMCAAgentFactory.register("PMCATeamDecisionCritic")
-class PMCATeamDecisionCritic(PMCAAgentMetadata):
+@PMCAAssistantFactory.register("PMCATeamDecisionCritic")
+class PMCATeamDecisionCritic(PMCAAssistantMetadata):
     description = "一个专门负责评估团队组件选择结果是否合理的评测员"
     system_message = """你是一位顶级的AI协作流程审计师，对多智能体工作流的效率和风险有深刻的洞察。
 
@@ -133,8 +133,8 @@ class PMCATeamDecisionCritic(PMCAAgentMetadata):
 """
 
 
-@PMCAAgentFactory.register("PMCAAgentsDecisionCritic")
-class PMCAAgentsDecisionCritic(PMCAAgentMetadata):
+@PMCAAssistantFactory.register("PMCAAgentsDecisionCritic")
+class PMCAAgentsDecisionCritic(PMCAAssistantMetadata):
     description = "一个专门负责评估团队组件选择结果是否合理的评测员"
     system_message = """你是一名资深的AI团队构成审计师，以挑剔和建设性的眼光著称。
 
@@ -164,8 +164,8 @@ class PMCAAgentsDecisionCritic(PMCAAgentMetadata):
 """
 
 
-@PMCAAgentFactory.register("PMCADecisionReviewer")
-class PMCADecisionReviewer(PMCAAgentMetadata):
+@PMCAAssistantFactory.register("PMCADecisionReviewer")
+class PMCADecisionReviewer(PMCAAssistantMetadata):
     description = "一个对任务抉择的结果进行汇总的助手，将结果"
     system_message = """你是“最终决策审查官”，负责在所有决策环节都完成后，进行最终的确认和汇总。
 

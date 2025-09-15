@@ -1,9 +1,9 @@
-from core.assistant.factory import PMCAAgentFactory
-from core.assistant.factory import PMCAAgentMetadata
+from core.assistant.factory import PMCAAssistantFactory
+from core.assistant.factory import PMCAAssistantMetadata
 
 
-@PMCAAgentFactory.register("PMCAKnowledgeLibrarian")
-class PMCAKnowledgeLibrarian(PMCAAgentMetadata):
+@PMCAAssistantFactory.register("PMCAKnowledgeLibrarian")
+class PMCAKnowledgeLibrarian(PMCAAssistantMetadata):
     description = "作为用户与知识管理功能的唯一交互入口，负责理解用户的自然语言指令，并将其转化为结构化的、可执行的内部任务。"
     system_message = """你是“知识馆员”(KnowledgeLibrarian)，一个专业、耐心且聪明的AI助手。你是用户与我们庞大知识库之间的唯一沟通桥梁。你的核心任务是理解用户的自然语言请求，并将其转化为精确的、结构化的指令，交给“知识技术员”(KnowledgeTechnician)去执行。
 

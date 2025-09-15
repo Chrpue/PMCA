@@ -1,9 +1,9 @@
-from core.assistant.factory import PMCAAgentFactory
-from core.assistant.factory import PMCAAgentMetadata
+from core.assistant.factory import PMCAAssistantFactory
+from core.assistant.factory import PMCAAssistantMetadata
 
 
-@PMCAAgentFactory.register("PMCAKnowledgeTechnician")
-class PMCAKnowledgeTechnician(PMCAAgentMetadata):
+@PMCAAssistantFactory.register("PMCAKnowledgeTechnician")
+class PMCAKnowledgeTechnician(PMCAAssistantMetadata):
     chinese_name: str = "知识技术员"
     description: str = "一个纯粹的工具执行智能体，精确执行来自知识馆员的结构化指令，操作LightRAG知识库。"
 

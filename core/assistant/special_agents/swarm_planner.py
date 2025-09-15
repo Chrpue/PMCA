@@ -1,5 +1,5 @@
-from core.assistant.factory import PMCAAgentFactory
-from core.assistant.factory import PMCAAgentMetadata
+from core.assistant.factory import PMCAAssistantFactory
+from core.assistant.factory import PMCAAssistantMetadata
 
 
 # 你是一名任务规划协调员。你的主要任务是使用 SequentialThinking MCP 工具将用户的复杂任务逐步拆解为可执行的子任务。
@@ -14,8 +14,8 @@ from core.assistant.factory import PMCAAgentMetadata
 # 当所有子任务都已分配完毕且流程结束时，请回复 'TERMINATE'。
 
 
-@PMCAAgentFactory.register("PMCASwarmPlanner")
-class PMCASwarmPlanner(PMCAAgentMetadata):
+@PMCAAssistantFactory.register("PMCASwarmPlanner")
+class PMCASwarmPlanner(PMCAAssistantMetadata):
     description = "一个负责对任务进行总体规划和分解的任务规划协调员，除此之外，还需对任务进行监督和处理反馈，协调其他伙伴共同完成任务."
     system_message = """你是一名任务规划协调员，总是第一个接收用户任务，利用你的工具完成任务。
 你的团队成员包括:
