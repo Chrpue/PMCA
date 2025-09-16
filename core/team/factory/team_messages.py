@@ -3,7 +3,7 @@ from autogen_agentchat.messages import BaseChatMessage
 from pydantic import Field
 
 
-class PMCATeamFeedBack(StrEnum):
+class TeamFeedBack(StrEnum):
     FINISHED = "[TEAM EXECUTION FINISHED]"
     RESUME = "[TEAM RESUME]"
     NEEDUSER = "[NEED USER INPUT]"

@@ -1,3 +1,3 @@
-from .selector_group import PMCASelectorGroup
+from .team_base import PMCATeamBase
 
-__all__ = ["PMCASelectorGroup"]
+__all__ = ["PMCATeamBase"]
