@@ -49,6 +49,7 @@ class PMCAEnvConfig(BaseSettings):
     OLLAMA_HOST: str
 
     # --- Routing 配置 ---
+    TRIAGE_MAX_TURNS: int
     SELECTOR_GROUP_MAX_TURNS: int
 
     # --- Redis Cache配置信息 ---
