@@ -13,7 +13,6 @@ from autogen_core import CancellationToken
 from base.runtime.task_context import PMCATaskContext
 from autogen_agentchat.messages import BaseAgentEvent, BaseChatMessage
 from autogen_agentchat.base import Team, TaskResult
-from autogen_agentchat.teams import Swarm, SelectorGroupChat, MagenticOneGroupChat
 
 from core.team.common import PMCARoutingMessages
 from core.team.core_assistants import PMCAUserProxy
@@ -27,6 +26,32 @@ class PMCATeamBase(ABC):
         self._current_cancel_token: Optional[CancellationToken] = None
         self._external_termination: ExternalTermination = ExternalTermination()
         self._team: Optional[Team] = None
+        self._user_proxy: Optional[PMCAUserProxy] = None
+        self._termination = None
+
+    @property
+    def ctx(self):
+        return self._ctx
+
+    @property
+    def user_proxy(self):
+        if self._user_proxy is None:
+            self._user_proxy = PMCAUserProxy(
+                name="PMCAUserProxy", mode=self._ctx.task_env.INTERACTION_MODE
+            )
+        return self._user_proxy
+
+    @property
+    def team(self):
+        if self._team is None:
+            self._team = self._build_team()
+        return self._team
+
+    @property
+    def termination(self):
+        if self._termination is None:
+            self._termination = self._combine_termination_condition()
+        return self._termination
 
     @abstractmethod
     def _team_text_termination(self) -> List[TextMentionTermination]:
@@ -49,11 +74,6 @@ class PMCATeamBase(ABC):
             self._external_termination
             | self._team_max_turns()
             | reduce(operator.or_, self._team_text_termination())
-        )
-
-    async def _build_user_proxy(self) -> PMCAUserProxy:
-        return PMCAUserProxy(
-            name="PMCAUserProxy", mode=self._ctx.task_env.INTERACTION_MODE
         )
 
     @dispatch_run_mode(mode_kw="mode", background_kw="background")

@@ -2,7 +2,6 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import Field
 from core.assistant.factory import PMCAAssistantMetadata
-from core.assistant.factory.assistant_domain import PMCAAssistantDomain
 from core.client import AbilityType
 from .core_assistants import PMCACoreAssistants
 

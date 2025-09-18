@@ -1,12 +1,17 @@
-from typing import Type, Dict, List, Optional
+from typing import Any, Type, Dict, List, Optional
 from autogen_agentchat.agents import AssistantAgent
 from autogen_core.tools import BaseTool, FunctionTool, Workbench
 from autogen_ext.tools.mcp import McpWorkbench
+
+from core.client.llm_factory import ProviderType
 
 from .assistant_config import PMCAAssistantMetadata
 from core.team.core_assistants import PMCACoreAssistants
 from core.memory.factory.mem0 import PMCAMem0LocalService
 from base.runtime import PMCATaskContext
+from core.client import supports_structured_output
+from base.prompts.task_triage import PMCATRIAGE_SYSTEM_MESSAGE
+from core.team.common import PMCATriageResult
 
 
 class PMCAAssistantFactory:
@@ -29,6 +34,23 @@ class PMCAAssistantFactory:
             return meta_cls
 
         return decorator
+
+    def _create_triage_assistant_params(
+        self, base_params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        provider = self.ctx.task_env.DEFAULT_PROVIDER
+        model_name = self.ctx.task_env.DEFAULT_MODEL
+
+        final_system_message = PMCATRIAGE_SYSTEM_MESSAGE.format(
+            available_assistants=self.professional_assistants_description()
+        )
+        base_params["system_message"] = final_system_message
+
+        if supports_structured_output(ProviderType(provider), model_name):
+            base_params["output_content_type"] = PMCATriageResult
+            base_params["reflect_on_tool_use"] = False
+
+        return base_params
 
     @classmethod
     def all_registered_assistants(cls) -> Dict[str, PMCAAssistantMetadata]:
@@ -101,12 +123,8 @@ class PMCAAssistantFactory:
         if biz_type not in self._registry:
             raise ValueError(f"未知的业务类型: {biz_type}")
 
-        # 1. 获取元数据蓝图实例
         meta = self._registry[biz_type]()
 
-        # 2. 准备所有构造参数
-
-        # 2.1 模型客户端 (根据 ability 决定)
         model_client = self.ctx.llm_factory.client(meta.ability)
 
         # 2.2 工具或 Workbench (根据 tools_type 决定)
@@ -135,6 +153,9 @@ class PMCAAssistantFactory:
             "metadata": meta.metadata,
             # 注意: output_content_type 等更高级的参数也可以在这里添加
         }
+
+        if biz_type == PMCACoreAssistants.TRIAGE.value:
+            assistant_params = self._create_triage_assistant_params(assistant_params)
 
         assistant_params.update(override_kwargs)
 
