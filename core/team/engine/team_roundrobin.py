@@ -31,7 +31,6 @@ class PMCARoundRobin(PMCATeamBase):
 
         self._participants.append(self.user_proxy)
         self._participants.append(triage)
-        logger.success(self._participants)
 
         return self._participants
 

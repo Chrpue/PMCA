@@ -35,6 +35,9 @@ class PMCATeamBase(ABC):
     def ctx(self):
         return self._ctx
 
+    def initialize_team(self):
+        _ = self.user_proxy
+
     @property
     def user_proxy(self):
         if self._user_proxy is None:
@@ -90,7 +93,7 @@ class PMCATeamBase(ABC):
         *,
         task: Optional[Union[str, BaseChatMessage, Sequence[BaseChatMessage]]] = None,
         cancellation_token: Optional[CancellationToken] = None,
-        output_task_messages: bool = True,
+        output_task_messages: bool = False,
     ) -> AsyncGenerator[Union[BaseAgentEvent, BaseChatMessage, TaskResult], None]:
         if self._running_task is not None and not self._running_task.done():
             raise RuntimeError("团队组件已经在执行，在开启另一个执行过程前请先终止它.")
@@ -128,35 +131,47 @@ class PMCATeamBase(ABC):
             return
         await self._team.reset()
 
-    # ====== 便捷运行封装（可选） ======
-    async def run_console(
-        self,
-        *,
-        task: Optional[Union[str, BaseChatMessage, Sequence[BaseChatMessage]]] = None,
-        background: bool = False,
-        **kwargs: Any,
-    ):
-        """等价于 run(mode='console', ...)"""
-        return await self.run(
-            task=task,
-            mode="console",  # type: ignore
-            background=background,  # type: ignore
-            **kwargs,
-        )
+    # async def run_console(
+    #     self,
+    #     *,
+    #     task: Optional[Union[str, BaseChatMessage, Sequence[BaseChatMessage]]] = None,
+    #     background: bool = False,
+    #     **kwargs: Any,
+    # ):
+    #     """等价于 run(mode='console', ...)"""
+    #     return await self.run(
+    #         task=task,
+    #         mode="console",  # type: ignore
+    #         background=background,  # type: ignore
+    #         **kwargs,
+    #     )
+    #
+    # async def run_service(
+    #     self,
+    #     *,
+    #     task: Optional[Union[str, BaseChatMessage, Sequence[BaseChatMessage]]] = None,
+    #     on_round: Optional[
+    #         Callable[[int, List[Union[BaseAgentEvent, BaseChatMessage]]], Any]
+    #     ] = None,
+    #     **kwargs: Any,
+    # ):
+    #     """等价于 run(mode='service', on_round=..., ...)"""
+    #     return await self.run(
+    #         task=task,
+    #         mode="service",  # type: ignore
+    #         on_round=on_round,  # type: ignore
+    #         **kwargs,
+    #     )
 
-    async def run_service(
+    async def run_auto(
         self,
         *,
         task: Optional[Union[str, BaseChatMessage, Sequence[BaseChatMessage]]] = None,
-        on_round: Optional[
-            Callable[[int, List[Union[BaseAgentEvent, BaseChatMessage]]], Any]
-        ] = None,
-        **kwargs: Any,
+        background=False,
+        on_round=None,
+        **kwargs,
     ):
-        """等价于 run(mode='service', on_round=..., ...)"""
+        mode = self.ctx.task_env.INTERACTION_MODE
         return await self.run(
-            task=task,
-            mode="service",  # type: ignore
-            on_round=on_round,  # type: ignore
-            **kwargs,
+            task=task, mode=mode, background=background, on_round=on_round, **kwargs
         )
