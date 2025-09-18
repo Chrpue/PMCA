@@ -2,6 +2,7 @@ from typing import List
 from autogen_agentchat.base import ChatAgent, Team
 from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermination
+from loguru import logger
 from base.runtime.task_context import PMCATaskContext
 from core.team.common.team_messages import PMCARoutingMessages
 from core.team.core_assistants import PMCACoreAssistants
@@ -21,7 +22,7 @@ class PMCARoundRobin(PMCATeamBase):
     def _team_max_turns(self) -> MaxMessageTermination:
         return MaxMessageTermination(self._ctx.task_env.DECISION_MAX_TURNS)
 
-    async def _build_team_participants(self) -> List[ChatAgent | Team]:
+    def _build_team_participants(self) -> List[ChatAgent | Team]:
         self._participants = []
 
         triage = self.ctx.assistant_factory.create_assistant(
@@ -30,11 +31,12 @@ class PMCARoundRobin(PMCATeamBase):
 
         self._participants.append(self.user_proxy)
         self._participants.append(triage)
+        logger.success(self._participants)
 
         return self._participants
 
-    def _build_team(self):
-        RoundRobinGroupChat(
-            self._participants,
+    def _build_team(self) -> Team:
+        return RoundRobinGroupChat(
+            self.participants,
             termination_condition=self.termination,
         )

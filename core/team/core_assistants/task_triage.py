@@ -24,7 +24,7 @@ class PMCATriage(PMCAAssistantMetadata):
     required_mcp_keys: List[str] = []
     tools: List[Any] = []
 
-    model_client_stream: bool = True
+    model_client_stream: bool = False
 
     reflect_on_tool_use: bool = True
 

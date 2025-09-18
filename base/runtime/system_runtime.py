@@ -53,9 +53,7 @@ class PMCARuntime:
 
     async def _initialize_assistants_registry(self) -> None:
         """读取 AgentFactory 注册表并缓存。"""
-        self._registered_assistants = (
-            PMCAAssistantFactory.get_all_registered_assistants()
-        )
+        self._registered_assistants = PMCAAssistantFactory.all_registered_assistants()
         logger.info(f"Registered agents: {list(self._registered_assistants.keys())}")
 
     async def _initialize_assistants_memories(self) -> None:

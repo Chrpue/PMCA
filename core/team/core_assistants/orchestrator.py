@@ -1,11 +1,9 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import Field
 from core.client import AbilityType
 from .core_assistants import PMCACoreAssistants
 
-if TYPE_CHECKING:
-    from core.assistant.factory import PMCAAssistantFactory, PMCAAssistantMetadata
+from core.assistant.factory import PMCAAssistantFactory, PMCAAssistantMetadata
 
 
 @PMCAAssistantFactory.register(PMCACoreAssistants.ORCHESTRATOR.value)

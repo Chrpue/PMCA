@@ -15,7 +15,7 @@ async def main():
 
     group = PMCARoundRobin(ctx=task_ctx)
 
-    await group.run()
+    await group.run_console()
 
 
 if __name__ == "__main__":

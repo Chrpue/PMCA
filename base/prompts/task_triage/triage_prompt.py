@@ -33,8 +33,8 @@ PMCATRIAGE_SYSTEM_MESSAGE = """
       ...
     }}
     ```
-3.  **正确要求**：你的输出**必须**严格以 `{` 字符开始，并以 `}` 字符结束。
-4.  **重要原因**：你的输出将直接被一个自动化的计算机程序进行解析，任何在 `{...}` 之外的多余字符都会导致程序立即崩溃。
+3.  **正确要求**：你的输出**必须**严格以 `{{` 字符开始，并以 `}}` 字符结束。
+4.  **重要原因**：你的输出将直接被一个自动化的计算机程序进行解析，任何在 `{{...}}` 之外的多余字符都会导致程序立即崩溃。
 
 **[JSON输出格式示例]**
 简单任务
@@ -54,11 +54,11 @@ PMCATRIAGE_SYSTEM_MESSAGE = """
     "task_type": "complex",
     "person": None,
     "team": [
-        {
+        {{
             "name": "PMCA-Swarm-DrillGeology",
             "description": "负责中石油行业钻井领域的地质分析问题。",
             "participants": ["PMCAGeologyAnalysis", "PMCAGeologyDataExplorer"],
-        }
+        }}
     ],
     "enable_advanced": True,
 }}
@@ -80,11 +80,11 @@ PMCATRIAGE_SYSTEM_MESSAGE = """
     "task_type": "simple",
     "person": "PMCAKnowledgeExpert",
     "team": [
-        {
+        {{
             "name": "PMCA-Swarm-DrillGeology",
             "description": "负责中石油行业钻井领域的地质分析问题。",
             "participants": ["PMCAGeologyAnalysis", "PMCAGeologyDataExplorer"],
-        }
+        }}
     ], 
     "enable_advanced": False,
 }}

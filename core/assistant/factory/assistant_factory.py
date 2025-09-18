@@ -1,17 +1,23 @@
-from typing import Any, Type, Dict, List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Type, Dict, List, Optional
 from autogen_agentchat.agents import AssistantAgent
 from autogen_core.tools import BaseTool, FunctionTool, Workbench
 from autogen_ext.tools.mcp import McpWorkbench
+from loguru import logger
 
 from core.client.llm_factory import ProviderType
-
 from .assistant_config import PMCAAssistantMetadata
-from core.team.core_assistants import PMCACoreAssistants
+
+
 from core.memory.factory.mem0 import PMCAMem0LocalService
 from base.runtime import PMCATaskContext
 from core.client import supports_structured_output
 from base.prompts.task_triage import PMCATRIAGE_SYSTEM_MESSAGE
 from core.team.common import PMCATriageResult
+
+if TYPE_CHECKING:
+    from core.team.core_assistants import PMCACoreAssistants
 
 
 class PMCAAssistantFactory:
@@ -65,6 +71,8 @@ class PMCAAssistantFactory:
         """
         为 Planner 获取特定智能体的“中文名”,“职能描述”,“元数据”字符串。
         """
+        from core.team.core_assistants import PMCACoreAssistants
+
         all_assistants = cls.all_registered_assistants()
         desc_parts = [
             f"- {meta.chinese_name} ({name}):{meta.duty}:{meta.metadata}"
@@ -153,6 +161,8 @@ class PMCAAssistantFactory:
             "metadata": meta.metadata,
             # 注意: output_content_type 等更高级的参数也可以在这里添加
         }
+
+        from core.team.core_assistants import PMCACoreAssistants
 
         if biz_type == PMCACoreAssistants.TRIAGE.value:
             assistant_params = self._create_triage_assistant_params(assistant_params)

@@ -10,13 +10,14 @@ from autogen_agentchat.conditions import (
     TextMentionTermination,
 )
 from autogen_core import CancellationToken
+from loguru import logger
 from base.runtime.task_context import PMCATaskContext
 from autogen_agentchat.messages import BaseAgentEvent, BaseChatMessage
-from autogen_agentchat.base import Team, TaskResult
+from autogen_agentchat.base import ChatAgent, Team, TaskResult
 
 from core.team.common import PMCARoutingMessages
 from core.team.core_assistants import PMCAUserProxy
-from core.team.engine import dispatch_run_mode
+from core.team.engine.run_mode import dispatch_run_mode
 
 
 class PMCATeamBase(ABC):
@@ -28,6 +29,7 @@ class PMCATeamBase(ABC):
         self._team: Optional[Team] = None
         self._user_proxy: Optional[PMCAUserProxy] = None
         self._termination = None
+        self._participants: List[ChatAgent | Team] = []
 
     @property
     def ctx(self):
@@ -40,6 +42,12 @@ class PMCATeamBase(ABC):
                 name="PMCAUserProxy", mode=self._ctx.task_env.INTERACTION_MODE
             )
         return self._user_proxy
+
+    @property
+    def participants(self):
+        if not self._participants:
+            self._participants = self._build_team_participants()
+        return self._participants
 
     @property
     def team(self):
@@ -62,7 +70,7 @@ class PMCATeamBase(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def _build_team_participants(self):
+    def _build_team_participants(self) -> List[ChatAgent | Team]:
         raise NotImplementedError
 
     @abstractmethod
@@ -89,11 +97,11 @@ class PMCATeamBase(ABC):
 
         self._current_cancel_token = cancellation_token or CancellationToken()
 
-        if not self._team:
+        if not self.team:
             raise RuntimeError(
                 "Team 尚未构建，请先调用 _build_team() 初始化 self._team."
             )
-        return self._team.run_stream(
+        return self.team.run_stream(
             task=task,
             cancellation_token=self._current_cancel_token,
             output_task_messages=output_task_messages,

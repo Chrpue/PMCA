@@ -4,7 +4,7 @@ from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Tuple, U
 
 from autogen_agentchat.messages import BaseAgentEvent, BaseChatMessage
 from autogen_agentchat.base import TaskResult
-from autogen_agentchat.ui import Console
+from loguru import logger
 
 
 def dispatch_run_mode(mode_kw: str = "mode", background_kw: str = "background"):
