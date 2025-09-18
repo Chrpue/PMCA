@@ -1,11 +1,11 @@
-from typing import Any, Dict, List, Literal, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
 
 from pydantic import Field
-from core.assistant.factory import PMCAAssistantMetadata
 from core.client import AbilityType
 from .core_assistants import PMCACoreAssistants
 
-from core.assistant.factory import PMCAAssistantFactory
+if TYPE_CHECKING:
+    from core.assistant.factory import PMCAAssistantFactory, PMCAAssistantMetadata
 
 
 @PMCAAssistantFactory.register(PMCACoreAssistants.ORCHESTRATOR.value)
@@ -62,9 +62,5 @@ class PMCAOrchestrator(PMCAAssistantMetadata):
     max_tool_iterations: int = 10
 
     tool_call_summary_format: str = "{tool_name}: {arguments} -> {result}"
-
-    domains: List[PMCAAssistantDomain] = Field(
-        default_factory=list, description="智能体所属的领域列表"
-    )
 
     metadata: Optional[Dict[str, str]] = None
