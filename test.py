@@ -1,123 +1,257 @@
 import asyncio
 from loguru import logger
-import sys
+from typing import List, Sequence, Union, Optional
 
-# 确保脚本可以找到您的核心模块
-sys.path.append(".")
+from autogen_agentchat.base import TaskResult
+from autogen_agentchat.agents import AssistantAgent, UserProxyAgent
+from autogen_agentchat.conditions import (
+    ExternalTermination,
+    MaxMessageTermination,
+    TextMentionTermination,
+)
+from autogen_agentchat.messages import BaseAgentEvent, BaseChatMessage
+from autogen_agentchat.teams import SelectorGroupChat
+from autogen_agentchat.ui import Console
 
-from autogen_agentchat.base import Team
-from autogen_agentchat.teams import RoundRobinGroupChat
-from autogen_agentchat.conditions import MaxMessageTermination
-from autogen_agentchat.agents import AssistantAgent
-
-from base.runtime import PMCARuntime, PMCATaskContext
-from core.team.engine import PMCATeamBase
-from core.team.common import PMCARoutingMessages
-
-# 【核心修正】直接导入您已经写好的 PMCAUserProxy
-from core.team.core_assistants.user_proxy import PMCAUserProxy
+from core.client import LLMFactory, ProviderType
 
 
-# 1. 创建一个能够触发用户中断的、更真实的测试团队
-class InteractiveTestTeam(PMCATeamBase):
-    """
-    一个用于测试中断、暂停、保存、恢复逻辑的交互式团队。
-    """
-
-    def build(self) -> Team:
+def search_web_tool(query: str) -> str:
+    if "2006-2007" in query:
+        return """以下是迈阿密热火队球员在 2006-2007 赛季的总得分：
+        Udonis Haslem: 844 分
+        Dwayne Wade: 1397 分
+        James Posey: 550 分
+        ...
         """
-        构建一个包含分析师和您的 PMCAUserProxy 的 RoundRobinGroupChat 团队。
-        """
-        # Analyst Agent: 它被设定为在没有得到具体指令时，会向用户提问
-        analyst_agent = AssistantAgent(
-            name="Analyst_Agent",
-            system_message=f"""你是一名分析师。你的任务是分析数据。
-如果用户没有提供明确的数据来源，你必须向用户提问：“我需要知道要分析哪个文件，请提供文件路径。”
-在你的提问之后，你必须紧接着输出中断信号：`{PMCARoutingMessages.TEAM_NEED_USER.value}`。
-如果用户提供了文件路径，你就回复：“收到，正在分析文件：[文件路径]。分析完成。”
+    elif "2007-2008" in query:
+        return "德维恩·韦德在 2007-2008 赛季迈阿密热火队的总篮板数为 214 个。"
+    elif "2008-2009" in query:
+        return "德维恩·韦德在 2008-2009 赛季迈阿密热火队的总篮板数为 398 个。"
+    return "未找到数据"
+
+
+def percentage_change_tool(start: float, end: float) -> float:
+    return ((end - start) / start) * 100
+
+
+model_client = LLMFactory.client()
+
+planning_agent = AssistantAgent(
+    "PlanningAgent",
+    description="An agent for planning tasks, this agent should be the first to engage when given a new task.",
+    model_client=model_client,
+    system_message="""
+你是一名任务规划师。
+你的工作是将复杂的任务分解成更小、更易于管理的子任务。
+你的团队成员包括：
+WebSearchAgent：搜索信息
+DataAnalystAgent：执行计算
+
+你只需规划和委派任务，无需亲自执行。
+
+分配任务时，请使用以下格式：
+1. <代理>: <任务>
+
+当所有任务完成后，总结发现并以"TERMINATE" 结束.
 """,
-            model_client=self._ctx.llm_factory.client(),
-        )
+)
 
-        # 【核心修正】使用您代码中现成的 PMCAUserProxy
-        # 我们不再使用 AutoGen 默认的 UserProxyAgent
-        user_proxy = PMCAUserProxy().build_user_proxy_assistant()
+web_search_agent = AssistantAgent(
+    "WebSearchAgent",
+    description="An agent for searching information on the web.",
+    tools=[search_web_tool],
+    model_client=model_client,
+    system_message="""
+你是一个网络搜索代理。
+你唯一的工具是 search_tool - 用它来查找信息。
+你每次只能进行一次搜索。
+一旦你获得了结果，你就永远不会基于结果进行任何计算。
+""",
+)
 
-        return RoundRobinGroupChat(
-            name="InteractiveRoundRobinTeam",
-            participants=[analyst_agent, user_proxy],
-            termination_condition=MaxMessageTermination(max_messages=5),
-        )
+data_analyst_agent = AssistantAgent(
+    "DataAnalystAgent",
+    description="An agent for performing calculations.",
+    model_client=model_client,
+    tools=[percentage_change_tool],
+    system_message="""
+你是一名数据分析师。
+根据你被分配的任务，你应该分析数据并使用提供的工具提供结果。
+如果你还没有看到这些数据，请向我索取。
+""",
+)
+
+text_mention_termination = TextMentionTermination("TERMINATE")
+max_messages_termination = MaxMessageTermination(max_messages=25)
+external_termination = ExternalTermination()
+
+termination = text_mention_termination | max_messages_termination | external_termination
+
+selector_prompt = """Select an agent to perform task.
+
+{roles}
+
+Current conversation context:
+{history}
+
+阅读以上对话，然后从 {participants} 中选择一名代理人执行下一个任务。
+请确保 `任务规划师` 在其他代理人开始工作之前已分配任务。
+仅选择一名代理人
+"""
+
+
+team = SelectorGroupChat(
+    [planning_agent, web_search_agent, data_analyst_agent],
+    model_client=model_client,
+    termination_condition=termination,
+    selector_prompt=selector_prompt,
+    allow_repeated_speaker=True,  # Allow an agent to speak multiple turns in a row.
+)
+
+
+# ---- 打印工具：将一个事件/消息渲染为简明文本 ----
+def render_item(item: Union[BaseAgentEvent, BaseChatMessage]) -> str:
+    # 所有消息/事件都实现了 to_text()；另外包含 source/created_at 字段
+    who = getattr(item, "source", "?")
+    t = getattr(item, "created_at", None)
+    kind = item.__class__.__name__
+    body = item.to_text().strip()
+    prefix = f"[{t}] " if t else ""
+    return f"{prefix}{who} · {kind}:\n{body}"
+
+
+# ---- （可选）按“轮次”分组：当说话人变化就视为新一轮 ----
+class RoundPrinter:
+    def __init__(self) -> None:
+        self._current_speaker: Optional[str] = None
+        self._buffer: List[str] = []
+
+    def _flush(self):
+        if self._buffer:
+            print("\n".join(self._buffer))
+            print("-" * 80)  # 分割线表示一轮结束
+            self._buffer.clear()
+
+    def feed(self, item: Union[BaseAgentEvent, BaseChatMessage]):
+        speaker = getattr(item, "source", None)
+        # 当遇到新的 speaker（且不是流式分片同一来源）时，视为新一轮
+        if (
+            self._current_speaker is not None
+            and speaker
+            and speaker != self._current_speaker
+        ):
+            self._flush()
+        self._current_speaker = speaker or self._current_speaker
+        self._buffer.append(render_item(item))
+
+    def finish(self):
+        self._flush()
+
+
+# ---- 手动消费 team.run_stream(...) 并打印 ----
+async def print_team_stream(
+    team, *, task=None, output_task_messages: bool = True
+) -> TaskResult:
+    round_printer = RoundPrinter()
+    async for item in team.run_stream(
+        task=task, output_task_messages=output_task_messages
+    ):
+        if isinstance(item, TaskResult):
+            # 打印最后一轮尚未flush的内容
+            round_printer.finish()
+            # 打印停止原因/统计
+            print(f"STOP REASON: {item.stop_reason}")
+            # 你也可以在这里访问 item.messages 做二次汇总
+            return item
+        else:
+            # 过滤掉流式分片（可选）：若你不想看到 token 级别分片，可跳过
+            if item.__class__.__name__ == "ModelClientStreamingChunkEvent":
+                # 示例：忽略分片。若想聚合，可用 full_message_id 做拼接。
+                continue
+            round_printer.feed(item)
+
+    # 理论上不会到这里（TaskResult 总会作为最后一项返回）
+    round_printer.finish()
+    raise RuntimeError("Stream ended without TaskResult")
+
+
+# _running_task: asyncio.Task | None = None
+#
+#
+# async def task_start(task):
+#     global _running_task
+#     _running_task = asyncio.create_task(print_team_stream(team, task=task))
+#
+#
+# async def task_stop():
+#     global _running_task
+#     await asyncio.sleep(3)
+#     external_termination.set()
+#     if _running_task:
+#         await _running_task
+#         _running_task = None
+#     # 显式复位所有终止条件
+#     await asyncio.gather(
+#         text_mention_termination.reset(),
+#         max_messages_termination.reset(),
+#         external_termination.reset(),
+#     )
+#
+#
+# async def task_resume():
+#     await print_team_stream(team)
+async def drain_and_print(stream):
+    async for item in stream:
+        if isinstance(item, TaskResult):
+            print("STOP REASON:", item.stop_reason)
+            return item
+        # item 支持 to_text()；或按需用 isinstance 做更细分处理
+        print(f"{item.__class__.__name__} | {getattr(item, 'source', None)}")
+        print(item.to_text())
+
+
+_running_task = None  # 全局/外部变量保存唯一消费者任务
+
+
+async def task_start(task: str):
+    global _running_task
+    assert _running_task is None, "已有运行中的流"
+    _running_task = asyncio.create_task(drain_and_print(team.run_stream(task=task)))
+
+
+async def task_stop():
+    global _running_task
+    external_termination.set()  # 请求停止：当前说话轮结束后停止
+    if _running_task:
+        await _running_task  # ***务必等待流跑到 TaskResult 结束***
+        _running_task = None
+    # 稳妥起见，把 OR 过的终止条件逐个 reset（外部终止、提及终止、消息数终止）
+    await asyncio.gather(
+        external_termination.reset(),
+        text_mention_termination.reset(),
+        max_messages_termination.reset(),
+    )
+
+
+async def task_resume():
+    # 继续上一任务（不带 task）
+    await drain_and_print(team.run_stream())
 
 
 async def main():
-    """
-    测试的主函数，完整演示“启动 -> 中断 -> 恢复 -> 完成”的流程。
-    """
-    logger.info("--- 开始测试 PMCATeamBase 的中断与恢复逻辑 ---")
+    task = "2006-2007 赛季迈阿密热火队得分最高的球员是谁？2007-2008 赛季和 2008-2009 赛季之间他的总篮板数变化百分比是多少？"
 
-    # --- 环境初始化 ---
-    runtime = PMCARuntime()
-    await runtime.initialize()
-    task_ctx = runtime.create_task_context(mission="交互式分析任务")
+    await task_start(task=task)
+    await task_stop()
 
-    # 【重要】确保 .env 中 INTERACTION_MODE=service
-    # if task_ctx.task_env.INTERACTION_MODE != "service":
-    #     logger.error(
-    #         "本次测试必须在 service 模式下运行，请在 .env 文件中设置 INTERACTION_MODE=service"
-    #     )
-    #     return
+    logger.error("================================================================")
+    logger.error("=====================等待3秒====================================")
+    logger.error("================================================================")
 
-    # --- 实例化团队 ---
-    test_team = InteractiveTestTeam(ctx=task_ctx)
-    team_name = test_team.team.name
-    state_key = f"team_state_{team_name}"
-
-    # --- 阶段一: 启动任务并触发中断 ---
-    logger.info(f"--- 阶段一：启动 '{team_name}' 并预期它会请求用户输入 ---")
-    initial_task = "请帮我分析数据"
-
-    response_from_analyst = await test_team.start(initial_task)
-
-    print("\n" + "=" * 20 + " 阶段一结果 " + "=" * 20)
-    print(f"团队返回的信息: {response_from_analyst}")
-    print("=" * 52 + "\n")
-
-    if PMCARoutingMessages.TEAM_NEED_USER.value in response_from_analyst:
-        logger.error("测试失败：团队返回了信号，而不是具体问题。")
-        return
-    else:
-        logger.success("阶段一成功：团队已暂停，并返回了需要用户回答的问题。")
-
-    # --- 阶段二: 模拟用户回复并恢复团队 ---
-    logger.info(f"--- 阶段二：模拟用户提供信息，并恢复团队 '{team_name}' ---")
-
-    user_response = "/home/data/log.csv"
-    logger.info(f"模拟用户输入: {user_response}")
-
-    # 重新创建一个团队实例来模拟一个新的请求流程
-    resumed_test_team = InteractiveTestTeam(ctx=task_ctx)
-
-    saved_state = await task_ctx.task_workbench.get_item(state_key)
-    if not saved_state:
-        logger.error("测试失败：未能从工作台加载已保存的团队状态。")
-        return
-
-    await resumed_test_team.team.load_state(saved_state)
-    await resumed_test_team.resume()
-
-    final_result = await resumed_test_team.start(user_response)
-
-    # --- 打印最终结果 ---
-    logger.success("--- 测试完成 ---")
-    print("\n" + "=" * 20 + " 最终结果 " + "=" * 20)
-    print(final_result)
-    print("=" * 52)
+    await task_resume()
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except Exception as e:
-        logger.error(f"测试过程中发生错误: {e}", exc_info=True)
+    asyncio.run(main())
 

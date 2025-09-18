@@ -1,21 +1,25 @@
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import Field
 from core.assistant.factory import PMCAAssistantMetadata
-from core.assistant.factory.assistant_domain import PMCAAssistantDomain
 from core.client import AbilityType
 from .core_assistants import PMCACoreAssistants
 
 from core.assistant.factory import PMCAAssistantFactory
+from base.prompts.task_triage import (
+    STRUCTURED_OUTPUT_SYSTEM_MESSAGE,
+    JSON_BASED_SYSTEM_MESSAGE,
+)
 
 
-@PMCAAssistantFactory.register(PMCACoreAssistants.ORCHESTRATOR.value)
-class PMCAOrchestrator(PMCAAssistantMetadata):
+@PMCAAssistantFactory.register(PMCACoreAssistants.TRIAGE.value)
+class PMCATriage(PMCAAssistantMetadata):
     """
-    顶层战略规划师，负责任务分解和执行单元的调度。
+    用户任务分诊（根据用户任务决策应由哪些智能体参加等）
     """
 
-    description: str = "一个顶层的战略规划与任务协调智能体，负责理解用户意图，制定执行计划，并协调其他成员完成任务。"
+    description: str = (
+        "一个顶层的战略规划与任务抉择智能体，负责理解用户意图，对用户任务进行分诊。"
+    )
 
     system_message: str = """
 你是 PMCA 系统的“首席任务规划师”(Chief Task Orchestrator)，是整个系统的战略核心。你善于使用工具进行思考，并协调一个动态的专家团队。
@@ -63,9 +67,5 @@ class PMCAOrchestrator(PMCAAssistantMetadata):
     max_tool_iterations: int = 10
 
     tool_call_summary_format: str = "{tool_name}: {arguments} -> {result}"
-
-    domains: List[PMCAAssistantDomain] = Field(
-        default_factory=list, description="智能体所属的领域列表"
-    )
 
     metadata: Optional[Dict[str, str]] = None

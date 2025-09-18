@@ -1,8 +1,5 @@
 from typing import List, Optional, Dict, Any, Literal
-from pydantic import Field
 from core.client import AbilityType
-
-from .assistant_domain import PMCAAssistantDomain
 
 
 class PMCAAssistantMetadata:
@@ -46,8 +43,4 @@ class PMCAAssistantMetadata:
 
     tool_call_summary_format: str = "{tool_name}: {arguments} -> {result}"
 
-    domains: List[PMCAAssistantDomain] = Field(
-        default_factory=list, description="智能体所属的领域列表"
-    )
-
-    metadata: Optional[Dict[str, str]] = None
+    metadata: Optional[Dict[str, str]] = {"domain": "base"}

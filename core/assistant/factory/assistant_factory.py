@@ -1,11 +1,11 @@
-from typing import Type, Dict, Any, List, Optional
+from typing import Type, Dict, List, Optional
 from autogen_agentchat.agents import AssistantAgent
 from autogen_core.tools import BaseTool, FunctionTool, Workbench
 from autogen_ext.tools.mcp import McpWorkbench
 
 from .assistant_config import PMCAAssistantMetadata
+from core.team.core_assistants import PMCACoreAssistants
 from core.memory.factory.mem0 import PMCAMem0LocalService
-from core.team.common import PMCABizDecisionRequirements
 from base.runtime import PMCATaskContext
 
 
@@ -31,7 +31,7 @@ class PMCAAssistantFactory:
         return decorator
 
     @classmethod
-    def get_all_registered_assistants(cls) -> Dict[str, PMCAAssistantMetadata]:
+    def all_registered_assistants(cls) -> Dict[str, PMCAAssistantMetadata]:
         """
         获取所有已注册智能体的完整元数据对象信息
         """
@@ -39,38 +39,16 @@ class PMCAAssistantFactory:
         return {biz_type: meta() for biz_type, meta in cls._registry.items()}
 
     @classmethod
-    def filter_assistants_by_requirements(
-        cls, requirements: PMCABizDecisionRequirements
-    ) -> Dict[str, PMCAAssistantMetadata]:
+    def professional_assistants_description(cls) -> str:
         """
-        根据 Planner 输出的 PMCABizDecisionRequirements 结构体，智能筛选出候选智能体。
+        为 Planner 获取特定智能体的“中文名”,“职能描述”,“元数据”字符串。
         """
-        all_assistants = cls.get_all_registered_assistants()
-        candidates = {}
-        for name, meta in all_assistants.items():
-            for domain in meta.domains:
-                if domain.primary != requirements.primary_domain:
-                    continue
-                if (
-                    requirements.secondary_domain
-                    and domain.secondary != requirements.secondary_domain
-                ):
-                    continue
-                if all(tag in domain.tags for tag in requirements.required_tags):
-                    candidates[name] = meta
-                    break
-        return candidates
-
-    @classmethod
-    def get_agents_description_for_planner(
-        cls, assistants: Dict[str, PMCAAssistantMetadata]
-    ) -> str:
-        """
-        为 Planner 获取特定智能体的“中文名”和“职能描述”字符串。
-        """
-        desc_parts = []
-        for name, meta in assistants.items():
-            desc_parts.append(f"- {meta.chinese_name} ({name}): {meta.duty}")
+        all_assistants = cls.all_registered_assistants()
+        desc_parts = [
+            f"- {meta.chinese_name} ({name}):{meta.duty}:{meta.metadata}"
+            for name, meta in all_assistants.items()
+            if not PMCACoreAssistants.is_core_assistant(name)
+        ]
         return "\n".join(desc_parts)
 
     def _create_workbench(
