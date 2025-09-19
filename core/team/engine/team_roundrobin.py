@@ -36,6 +36,6 @@ class PMCARoundRobin(PMCATeamBase):
 
     def _build_team(self) -> Team:
         return RoundRobinGroupChat(
-            self.participants,
+            self._build_team_participants(),
             termination_condition=self.termination,
         )
