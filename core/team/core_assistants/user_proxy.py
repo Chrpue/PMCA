@@ -1,70 +1,27 @@
-"""
-Enhanced PMCAUserProxy implementation.
-
-This module refactors the existing PMCAUserProxy to allow custom
-prompts, centralise the command parsing logic and maintain a clean
-separation between the user interface and the team runtime.  It
-demonstrates how to implement the input function expected by
-`autogen_agentchat.agents.UserProxyAgent` using plain `input()`
-instead of relying on Rich or other external UI libraries.
-
-Key improvements:
-    * Accepts a `prompt_message` parameter which, if provided, will
-      be displayed to the user instead of the internal prompt passed
-      in by the team.  This allows the team (or the context) to
-      customise how the user is prompted.
-    * The console input function prints a helpful instruction line
-      showing available commands (`/cancel`, `/pause`, `/interrupt`),
-      then uses `asyncio.to_thread(input, ...)` to capture
-      synchronous input without blocking the event loop.  It
-      automatically links the input task to a `CancellationToken`,
-      enabling immediate cancellation when the team is stopped.
-    * Returns special signal strings (from `PMCARoutingMessages`) for
-      commands, which can be captured by `TextMentionTermination`
-      conditions in the team.  This decouples the user proxy from
-      direct knowledge of team methods like `cancel_now()`.
-
-To use this class, copy the code into `core/team/core_assistants/user_proxy.py`
-or import it alongside your existing user proxies.  Instantiate it by
-passing `mode` and `prompt_message` from your task context.
-"""
-
 from __future__ import annotations
 
 import asyncio
-from typing import Awaitable, Callable, Optional
+from typing import Awaitable, Callable, List, Optional, Dict
 
 from autogen_core import CancellationToken
 from autogen_agentchat.agents import UserProxyAgent
 
+# 假设 PMCARoutingMessages 存在且定义了 các 信号
+from base.runtime.task_context import PMCATaskContext
 from core.team.common.team_messages import PMCARoutingMessages
+
+DEFAULT_CONSOLE_COMMANDS = {
+    "cancel": "/cancel",
+    "pause": "/pause",
+    "interrupt": "/interrupt",
+}
 
 
 class PMCAUserProxy(UserProxyAgent):
-    """
-    A refined user proxy agent which supports console and service modes
-    and allows a custom prompt to be displayed to the user.
-
-    :param name: Name of the agent
-    :param mode: Interaction mode ('console' or 'service')
-    :param prompt_message: A string to show to the user when
-                           requesting input; if None, the default
-                           prompt passed by the team will be used.
-    :param console_input: Optional override for the console input
-                          function.  Must be an async function with
-                          signature `(prompt: str, cancellation_token: Optional[CancellationToken]) -> str`.
-    :param service_input: Optional override for the service mode input
-                          function.  Must be an async function with the
-                          same signature.
-    :param description: Human‑readable description of the agent.
-    """
-
     def __init__(
         self,
-        name: str = "PMCAUserProxy",
+        ctx: PMCATaskContext,
         *,
-        mode: str = "console",
-        prompt_message: Optional[str] = None,
         console_input: Optional[
             Callable[[str, Optional[CancellationToken]], Awaitable[str]]
         ] = None,
@@ -73,88 +30,96 @@ class PMCAUserProxy(UserProxyAgent):
         ] = None,
         description: str = "一个用户代理，负责处理需要人类介入的场景。",
     ):
-        self._mode = (mode or "console").lower()
-        self._prompt_message = prompt_message
-        self._console_input = console_input or self._default_console_input
-        self._service_input = service_input or self._default_service_input
+        self._name: str = "PMCAUserProxy"
+        self._ctx = ctx
+        self._mode = ctx.task_env.INTERACTION_MODE
+
+        # --- 优化点 3: 应用可配置的命令 ---
+        self._console_commands = DEFAULT_CONSOLE_COMMANDS.copy()
+
+        self._mode_map = {
+            "console": console_input or self._default_console_input,
+            "service": service_input or self._default_service_input,
+        }
 
         async def _mux(
             prompt: str, cancellation_token: Optional[CancellationToken] = None
         ) -> str:
-            # Choose the input function based on the current mode
-            if self._mode == "console":
-                return await self._console_input(prompt, cancellation_token)
-            return await self._service_input(prompt, cancellation_token)
+            handler = self._mode_map.get(self._mode)
+            if not handler:
+                raise ValueError(
+                    f"不支持的交互模式: {self._mode} 请检查环境变量 .env 中的配置信息。"
+                )
+            return await handler(prompt, cancellation_token)
 
-        super().__init__(name=name, description=description, input_func=_mux)
+        super().__init__(name=self._name, description=description, input_func=_mux)
 
-    # ------------------------------------------------------------------
-    # Default input handlers
-    #
+    def register_input_mode(
+        self, mode_name: str, handler: Callable[..., Awaitable[str]]
+    ):
+        """
+        公开一个方法，用于在运行时注册新的输入模式处理器。
+        这使得类的扩展性极强。
+        """
+        self._mode_map[mode_name.lower()] = handler
+
     async def _default_console_input(
         self, prompt: str, cancellation_token: Optional[CancellationToken]
     ) -> str:
         """
-        Prompt the user for input in console mode.
-
-        This implementation displays a custom prompt (if provided) and
-        a list of available commands before capturing input using
-        `input()`.  It runs `input()` in a thread via
-        `asyncio.to_thread` to avoid blocking the event loop and links
-        the task to the cancellation token so that pending input can
-        be cancelled immediately.
+        在控制台模式下提示用户输入。
+        此方法现在只负责核心的I/O逻辑：构建提示、非阻塞地获取输入、并处理取消。
+        命令解析的职责被移交给了 _parse_console_commands 方法。
         """
-        # Build the message shown to the user.  Use the custom prompt
-        # when available; otherwise fall back to the prompt provided by
-        # the team.
-        display_prompt = self._prompt_message or prompt
+        cmd_cancel = self._console_commands.get("cancel", "/cancel")
+        cmd_pause = self._console_commands.get("pause", "/pause")
+        cmd_interrupt = self._console_commands.get("interrupt", "/interrupt")
+
         instruction = (
-            "\n" + display_prompt + "\n"
+            f"*********************************************************************************************************************\n"
+            f"1.[{cmd_cancel}]-取消并终止当前任务  2.[{cmd_pause}]-暂停当前任务  3.[{cmd_interrupt} <补充内容>]-中断并提供新的上下文\n"
+            f"*********************************************************************************************************************\n"
             "可输入以下命令:\n"
-            "  /cancel   —— 取消并终止当前任务\n"
-            "  /pause    —— 暂停当前任务，稍后可恢复\n"
-            "  /interrupt <内容> —— 中断并提供新的上下文\n"
             "> "
         )
-        # Launch synchronous input in a thread to avoid blocking.  We
-        # capture the task so that we can link it to the cancellation
-        # token.
+
         task = asyncio.create_task(asyncio.to_thread(input, instruction))
         if cancellation_token:
-            # Link the token so that token.cancel() will cancel the
-            # input task.  The behaviour of link_future() is such that
-            # when the token is cancelled, the task is cancelled as well.
             cancellation_token.link_future(task)
         try:
             user_input = await task
         except asyncio.CancelledError:
-            # If the input task is cancelled, return a cancellation
-            # signal so that the team can react accordingly.
             return PMCARoutingMessages.SIGNAL_CANCEL.value
 
-        user_input = (user_input or "").strip()
-        lower_input = user_input.lower()
-        # Interpret special commands by returning signal strings.  The
-        # team should include these signals in its text‑mention
-        # termination conditions.
-        if lower_input == "/cancel":
-            return PMCARoutingMessages.SIGNAL_CANCEL.value
-        if lower_input == "/pause":
-            return PMCARoutingMessages.SIGNAL_PAUSE.value
-        if lower_input.startswith("/interrupt"):
-            parts = user_input.split(" ", 1)
-            if len(parts) > 1 and parts[1].strip():
-                return f"{PMCARoutingMessages.SIGNAL_INTERRUPT_PREFIX.value} {parts[1].strip()}"
-        # Otherwise return the raw user input
-        return user_input
+        return self._parse_console_commands(user_input)
 
     async def _default_service_input(
         self, prompt: str, cancellation_token: Optional[CancellationToken]
     ) -> str:
-        """
-        Immediately return a special signal to indicate that user
-        intervention is required.  The calling code should react to
-        this signal by pausing the team and awaiting further input
-        through another mechanism (e.g. a web form).
-        """
         return PMCARoutingMessages.TEAM_NEED_USER.value
+
+    def _parse_console_commands(self, user_input: str) -> str:
+        """
+        专门负责解析来自控制台的原始输入字符串。
+        它将特殊命令翻译成内部信号，否则返回原始输入。
+        """
+        stripped_input = (user_input or "").strip()
+        lower_input = stripped_input.lower()
+
+        cmd_cancel = self._console_commands.get("cancel", "/cancel")
+        cmd_pause = self._console_commands.get("pause", "/pause")
+        cmd_interrupt = self._console_commands.get("interrupt", "/interrupt")
+
+        if lower_input == cmd_cancel:
+            return PMCARoutingMessages.SIGNAL_CANCEL.value
+        if lower_input == cmd_pause:
+            return PMCARoutingMessages.SIGNAL_PAUSE.value
+
+        if lower_input.startswith(cmd_interrupt):
+            parts = stripped_input.split(" ", 1)
+            if len(parts) > 1 and parts[1].strip():
+                content = parts[1].strip()
+                return f"{PMCARoutingMessages.SIGNAL_INTERRUPT_PREFIX.value} {content}"
+
+        return stripped_input
+

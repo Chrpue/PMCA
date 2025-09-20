@@ -20,6 +20,7 @@ class PMCAEnvConfig(BaseSettings):
 
     # --- 交互模式 ---
     INTERACTION_MODE: Literal["console", "service"]
+    RUN_BACKGROUND: bool
 
     # --- LLM 服务模式 ---
     LLM_TYPE: str = Field(

@@ -15,7 +15,9 @@ async def main():
 
     group = PMCARoundRobin(ctx=task_ctx)
 
-    await group.run_chat()
+    result = await group.run_chat(background=False)
+
+    # await result
 
 
 if __name__ == "__main__":
