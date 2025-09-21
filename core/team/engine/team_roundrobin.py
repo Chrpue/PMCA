@@ -14,10 +14,11 @@ class PMCARoundRobin(PMCATeamBase):
         super().__init__(ctx)
 
     def _team_text_termination(self) -> List[TextMentionTermination]:
-        return [
-            TextMentionTermination(item.value)
-            for item in PMCARoutingMessages.roundrobin_termination()
-        ]
+        # return [
+        #     TextMentionTermination(item.value)
+        #     for item in PMCARoutingMessages.roundrobin_termination()
+        # ]
+        return []
 
     def _team_max_turns(self) -> MaxMessageTermination:
         return MaxMessageTermination(self._ctx.task_env.DECISION_MAX_TURNS)
@@ -29,8 +30,13 @@ class PMCARoundRobin(PMCATeamBase):
             PMCACoreAssistants.TRIAGE.value
         )
 
+        triage_reviewer = self.ctx.assistant_factory.create_assistant(
+            PMCACoreAssistants.TRIAGE_REVIEWER.value
+        )
+
         self._participants.append(self.user_proxy)
         self._participants.append(triage)
+        self._participants.append(triage_reviewer)
 
         return self._participants
 

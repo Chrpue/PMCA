@@ -13,7 +13,11 @@ from .assistant_config import PMCAAssistantMetadata
 from core.memory.factory.mem0 import PMCAMem0LocalService
 from base.runtime import PMCATaskContext
 from core.client import supports_structured_output
-from base.prompts.task_triage import PMCATRIAGE_SYSTEM_MESSAGE
+from base.prompts.task_triage import (
+    PMCATRIAGE_SYSTEM_MESSAGE,
+    PMCATRIAGE_REVIEWER_SYSTEM_MESSAGE,
+    PMCATRIAGE_STRUCTURED_SYSTEM_MESSAGE,
+)
 from core.team.common import PMCATriageResult
 
 if TYPE_CHECKING:
@@ -44,17 +48,32 @@ class PMCAAssistantFactory:
     def _create_triage_assistant_params(
         self, base_params: Dict[str, Any]
     ) -> Dict[str, Any]:
-        provider = self.ctx.task_env.DEFAULT_PROVIDER
-        model_name = self.ctx.task_env.DEFAULT_MODEL
-
         final_system_message = PMCATRIAGE_SYSTEM_MESSAGE.format(
             available_assistants=self.professional_assistants_description()
         )
         base_params["system_message"] = final_system_message
 
-        if supports_structured_output(ProviderType(provider), model_name):
-            base_params["output_content_type"] = PMCATriageResult
-            base_params["reflect_on_tool_use"] = False
+        return base_params
+
+    def _create_triage_structured_assistant_params(
+        self, base_params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        final_system_message = PMCATRIAGE_STRUCTURED_SYSTEM_MESSAGE
+        base_params["system_message"] = final_system_message
+
+        return base_params
+
+    def _create_triage_reviewer_assistant_params(
+        self, base_params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        final_system_message = PMCATRIAGE_REVIEWER_SYSTEM_MESSAGE.format(
+            available_assistants=self.professional_assistants_description()
+        )
+        base_params["system_message"] = final_system_message
+
+        # if supports_structured_output(ProviderType(provider), model_name):
+        #     base_params["output_content_type"] = PMCATriageResult
+        #     base_params["reflect_on_tool_use"] = False
 
         return base_params
 
@@ -166,6 +185,16 @@ class PMCAAssistantFactory:
 
         if biz_type == PMCACoreAssistants.TRIAGE.value:
             assistant_params = self._create_triage_assistant_params(assistant_params)
+
+        if biz_type == PMCACoreAssistants.TRIAGE_REVIEWER.value:
+            assistant_params = self._create_triage_reviewer_assistant_params(
+                assistant_params
+            )
+
+        if biz_type == PMCACoreAssistants.TRIAGE_STRUCTURED.value:
+            assistant_params = self._create_triage_structured_assistant_params(
+                assistant_params
+            )
 
         assistant_params.update(override_kwargs)
 

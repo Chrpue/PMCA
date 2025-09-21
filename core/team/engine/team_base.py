@@ -43,8 +43,9 @@ def default_callable(
 
 
 class PMCATeamBase(ABC):
-    def __init__(self, ctx: PMCATaskContext) -> None:
+    def __init__(self, ctx: PMCATaskContext, *, use_user: bool = True) -> None:
         self._ctx = ctx
+        self._use_user = use_user
         self._team: Optional[Team] = None
         self._participants: List[ChatAgent | Team] = []
         self._termination: Optional[
@@ -61,8 +62,8 @@ class PMCATeamBase(ABC):
         return self._ctx
 
     @property
-    def user_proxy(self) -> PMCAUserProxy:
-        if self._user_proxy is None:
+    def user_proxy(self) -> Optional[PMCAUserProxy]:
+        if self._use_user and self._user_proxy is None:
             self._user_proxy = PMCAUserProxy(
                 self._ctx,
             )

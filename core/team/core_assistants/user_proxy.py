@@ -4,7 +4,7 @@ import asyncio
 from typing import Awaitable, Callable, List, Optional, Dict
 
 from autogen_core import CancellationToken
-from autogen_agentchat.agents import UserProxyAgent
+from autogen_agentchat.agents import BaseChatAgent, UserProxyAgent
 
 # 假设 PMCARoutingMessages 存在且定义了 các 信号
 from base.runtime.task_context import PMCATaskContext
@@ -122,4 +122,3 @@ class PMCAUserProxy(UserProxyAgent):
                 return f"{PMCARoutingMessages.SIGNAL_INTERRUPT_PREFIX.value} {content}"
 
         return stripped_input
-

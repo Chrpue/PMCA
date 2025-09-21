@@ -8,6 +8,10 @@ class PMCARoutingMessages(StrEnum):
     TASK_SUCCESS = "[TASK_SUCCESS]"  # 明确表示任务成功完成
     TASK_FAILURE = "[TASK_FAILURE]"
 
+    # --- 分诊环节信号 ---
+    TRIAGE_SUCCESS = "[TRIAGE_SUCCESS]"
+    TRIAGE_FAILURE = "[TRIAGE_FAILURE]"
+
     # --- 用户主动介入信号 ---
     SIGNAL_CANCEL = "[USER_CANCEL]"
     SIGNAL_PAUSE = "[USER_PAUSE]"
@@ -27,6 +31,10 @@ class PMCARoutingMessages(StrEnum):
     @classmethod
     def user_termination(cls):
         return [item for item in cls if item.name.startswith("SIGNAL_")]
+
+    @classmethod
+    def triage_termination(cls):
+        return [item for item in cls if item.name.startswith("TRIAGE_")]
 
     @classmethod
     def task_termination(cls):

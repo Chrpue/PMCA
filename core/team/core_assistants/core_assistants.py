@@ -5,6 +5,7 @@ from typing import List
 class PMCACoreAssistants(StrEnum):
     TRIAGE = "PMCATriage"
     TRIAGE_REVIEWER = "PMCATriageReviewer"
+    TRIAGE_STRUCTURED = "PMCATriageStructured"
     ORCHESTRATOR = "PMCAOrchestrator"
     USER_PROXY = "PMCAUserProxy"
 

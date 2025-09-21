@@ -4,7 +4,7 @@ from loguru import logger
 
 from base.configs import PMCASystemEnvConfig
 from base.runtime import PMCARuntime
-from core.team.engine import PMCARoundRobin
+from core.team.engine import PMCAFlowController
 
 
 async def main():
@@ -13,9 +13,13 @@ async def main():
 
     task_ctx = runtime.create_task_context(mission="请在这里输入您的任务...")
 
-    group = PMCARoundRobin(ctx=task_ctx)
+    controller = PMCAFlowController(task_ctx)
+    flow = controller.overall_graph
+    await Console(flow.run_stream())
 
-    result = await group.run_chat(background=False)
+    # group = PMCARoundRobin(ctx=task_ctx)
+
+    # await group.run_chat(background=False)
 
     # await result
 

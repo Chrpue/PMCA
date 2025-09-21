@@ -1,4 +1,4 @@
 from .team_base import PMCATeamBase
-from .team_roundrobin import PMCARoundRobin
+from .controller import PMCAFlowController
 
-__all__ = ["PMCATeamBase", "PMCARoundRobin"]
+__all__ = ["PMCATeamBase", "PMCAFlowController"]
