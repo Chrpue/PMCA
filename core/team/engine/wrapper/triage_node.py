@@ -2,18 +2,18 @@ from __future__ import annotations
 from typing import Sequence
 
 from autogen_agentchat.agents import BaseChatAgent
-from autogen_agentchat.base import Response
+from autogen_agentchat.base import Response, TaskResult
 from autogen_agentchat.messages import BaseChatMessage, TextMessage
 from autogen_core import CancellationToken
-from loguru import logger
 
-from core.team.engine.team_base import PMCATeamBase
+from core.team.common.team_messages import PMCARoutingMessages
+from core.team.factory import PMCATeamFactory
 
 
-class PMCATeamWrapper(BaseChatAgent):
+class PMCATriageTeamWrapper(BaseChatAgent):
     """将任意团队组件包装成 ChatAgent，以便 GraphFlow 调用."""
 
-    def __init__(self, team: PMCATeamBase, name: str = "", description: str = ""):
+    def __init__(self, team: PMCATeamFactory, name: str = "", description: str = ""):
         super().__init__(name=name, description=description)
         self._team = team
         # 初始状态：还未给团队分配任务
@@ -22,7 +22,6 @@ class PMCATeamWrapper(BaseChatAgent):
 
     @property
     def produced_message_types(self):
-        # 团队输出的是助手文本消息
         return [TextMessage]
 
     async def on_messages(
@@ -31,28 +30,50 @@ class PMCATeamWrapper(BaseChatAgent):
         cancellation_token: CancellationToken,
     ) -> Response:
         """收到新消息时调用团队运行，并返回团队的最终回复."""
-        await self._team.initialize_team()
 
         # 第一次调用时，将用户消息作为任务文本；后续调用直接继续历史对话
         task = None
         if self._is_first_call:
             # 找到最后一条用户消息作为任务文本
             for msg in reversed(messages):
-                # logger.success(msg)
                 if isinstance(msg, TextMessage) and msg.source == "PMCAUserProxy":  # type: ignore
                     task = msg.content
                     break
             self._is_first_call = False
 
         # 使用团队运行，并根据 ctx 配置自动选择 console/service 模式
-        chat_output = await self._team.run_chat(
+        task_result: TaskResult = await self._team.discuss(
             task=task,
             mode=self._team.ctx.task_env.INTERACTION_MODE,
             custom_callable=None,
         )
-        # 从 TaskResult 中取出最后一条助手消息作为代理的回复
-        final_msg: TextMessage = chat_output.messages[-1]  # type: ignore
-        self._final_response = Response(chat_message=final_msg)
+
+        triage_conversation_history = task_result.messages or []
+
+        formatted_history = "对用户任务的分诊过程讨论内容：\n"
+        for msg in triage_conversation_history:
+            try:
+                msg_dict = msg.model_dump()
+                formatted_history += (
+                    f"---- 发言人：{msg_dict.get('source', '未知')} ----\n"
+                )
+                formatted_history += f"{msg_dict.get('content', '')}\n\n"
+            except Exception:
+                formatted_history += (
+                    f"---- 发言人：{getattr(msg, 'source', '未知')} ----\n"
+                )
+                formatted_history += f"{getattr(msg, 'content', '')}\n\n"
+
+        stop_reason = task_result.stop_reason or ""
+        final_content = formatted_history
+
+        if PMCARoutingMessages.TRIAGE_SUCCESS.value in stop_reason:
+            final_content += f"{PMCARoutingMessages.TRIAGE_SUCCESS.value}"
+
+        self._final_response = Response(
+            chat_message=TextMessage(source=self.name, content=final_content),
+            inner_messages=triage_conversation_history,
+        )
 
         return self._final_response
 

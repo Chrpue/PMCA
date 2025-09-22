@@ -14,7 +14,7 @@ async def main():
     task_ctx = runtime.create_task_context(mission="请在这里输入您的任务...")
 
     controller = PMCAFlowController(task_ctx)
-    flow = controller.overall_graph
+    flow = await controller.overall_graph
     await Console(flow.run_stream())
 
     # group = PMCARoundRobin(ctx=task_ctx)

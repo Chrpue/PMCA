@@ -73,7 +73,7 @@ class PMCATeamBase(ABC):
         if self._initialized:
             return
         _ = self.user_proxy
-        self._participants = self._build_team_participants()
+        await self._build_team_participants()
         self._termination = self._combine_termination_condition()
         self._team = self._build_team()
         self._initialized = True
@@ -113,7 +113,7 @@ class PMCATeamBase(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _build_team_participants(self) -> List[ChatAgent | Team]:
+    async def _build_team_participants(self) -> None:
         """Construct and return the list of participants for this team"""
         raise NotImplementedError
 
@@ -155,7 +155,7 @@ class PMCATeamBase(ABC):
         await self.team.resume()
         print("团队已恢复，继续执行任务...")
 
-        return await self.run_chat(task=None, **kwargs)
+        return await self.discuss(task=None, **kwargs)
 
     @dispatch_run_mode
     async def run(
@@ -183,7 +183,7 @@ class PMCATeamBase(ABC):
             output_task_messages=output_task_messages,
         )
 
-    async def run_chat(
+    async def discuss(
         self,
         *,
         task: Optional[Union[str, BaseChatMessage, Sequence[BaseChatMessage]]] = None,

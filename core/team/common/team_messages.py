@@ -17,12 +17,13 @@ class PMCARoutingMessages(StrEnum):
     SIGNAL_PAUSE = "[USER_PAUSE]"
     SIGNAL_INTERRUPT_PREFIX = "[USER_INTERRUPT]"
 
-    # --- RoundRobin 团队执行结果 ---
-    ROUNDROBIN_SUCCESS = "[ROUNDROBIN_SUCCESS]"
-    ROUNDROBIN_FAILURE = "[ROUNDROBIN_FAILURE]"
+    # --- 复杂任务 团队执行结果 ---
+    COMPLEX_EXECUTOR_SUCCESS = "[COMPLEX_EXECUTOR_SUCCESS]"
+    COMPLEX_EXECUTOR_FAILURE = "[COMPLEX_EXECUTOR_FAILURE]"
 
-    # --- 用户被动介入信息 ---
-    TEAM_NEED_USER = "[NEED_USER_INTERRUPT]"
+    # --- 简单任务 团队执行结果 ---
+    SIMPLE_EXECUTOR_SUCCESS = "[SIMPLE_EXECUTOR_SUCCESS]"
+    SIMPLE_EXECUTOR_FAILURE = "[SIMPLE_EXECUTOR_FAILURE]"
 
     # --- Swarm 团队执行结果 ---
     SWARM_SUCCESS = "[SWARM_SUCCESS]"
@@ -45,14 +46,5 @@ class PMCARoutingMessages(StrEnum):
         return [item for item in cls if item.name.startswith("SWARM_")]
 
     @classmethod
-    def roundrobin_termination(cls):
-        return [item for item in cls if item.name.startswith("ROUNDROBIN_")]
-
-    @classmethod
-    def selector_group_termination(cls):
-        return [item for item in cls if item.name.startswith("TASK_")]
-
-
-class PMCANeedUserInput(BaseChatMessage):
-    reason: str = Field(..., description="说明需要用户介入的原因.")
-    content: str = "需要用户帮助."
+    def complex_executor_termination(cls):
+        return [item for item in cls if item.name.startswith("COMPLEX_EXECUTOR_")]
