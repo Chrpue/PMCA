@@ -80,23 +80,22 @@ class PMCAFlowController:
                 team, "PMCATriageTeamWrapper"
             )
 
-    async def _build_complex_team(self) -> None:
+    def _build_complex_team(self) -> None:
         """
         构建复杂任务团队
         """
         if not self._task_complex_group:
-            team = await PMCAComplexTaskTeam.create(
-                self._ctx, "PMCAComplexTaskTeam", "复杂任务执行团队"
-            )
             self._task_complex_group = PMCAComplexTaskExecutorWrapper(
-                team, "PMCAComplexTaskTeamWrapper"
+                self._ctx,
+                "PMCAComplexTaskTeamWrapper",
+                "一个负责动态执行复杂任务的节点",
             )
 
     async def initialize(self):
         self._user_proxy = self._build_user_proxy()
         await self._build_triage_team()
         await self._build_triage_structured()
-        await self._build_complex_team()
+        self._build_complex_team()
         await self._build_overall_graph()
         self._initialize = True
 

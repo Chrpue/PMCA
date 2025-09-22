@@ -11,7 +11,7 @@ async def main():
     runtime = PMCARuntime()
     await runtime.initialize()
 
-    task_ctx = runtime.create_task_context(mission="请在这里输入您的任务...")
+    task_ctx = runtime.create_task_context()
 
     controller = PMCAFlowController(task_ctx)
     flow = await controller.overall_graph

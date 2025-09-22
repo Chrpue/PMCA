@@ -47,6 +47,7 @@ class PMCATriageStructuredWrapper(BaseChatAgent):
         """
         执行“生成-处理-存储”的完整流程
         """
+
         summary_response = await self._wrapped_agent.on_messages(
             messages, cancellation_token
         )

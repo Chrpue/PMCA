@@ -52,7 +52,6 @@ class PMCAComplexTaskTeam(PMCATeamFactory):
         self._participants.append(self._user_proxy)
 
         triage_result = await self._ctx.task_workbench.get_item("triage_result")
-        print(triage_result)
 
         for team_info in triage_result.get("team"):
             swarm_team_name = team_info.get("name")
