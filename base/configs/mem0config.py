@@ -17,8 +17,7 @@ PMCAMem0LocalConfig = {
             "port": 25432,
             "user": "postgres",
             "password": "postgres",
-            # "embedding_model_dims": 1024,
-            "embedding_model_dims": 1536,
+            "embedding_model_dims": 1024,
         },
     },
     "embedder": {

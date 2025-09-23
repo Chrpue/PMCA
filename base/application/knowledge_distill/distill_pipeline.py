@@ -42,7 +42,7 @@ from base.configs.knowledge_distill_config import PMCADistillationConfig
 try:
     from core.knowledge.factory.lightrag import PMCALightRAGClient
     from core.memory.factory.mem0 import PMCAMem0LocalService
-    from core.client import LLMFactory, ProviderType, DutyType
+    from core.client import LLMFactory
     from autogen_core.models import SystemMessage
     from autogen_agentchat.messages import UserMessage
 except ImportError as exc:
@@ -219,7 +219,7 @@ class PMCADistillationPipeline:
         may also write the message into mem0.
         """
         rag_client = PMCALightRAGClient()
-        llm_client = LLMFactory.client(ProviderType.DEEPSEEK, DutyType.BASE)
+        llm_client = LLMFactory.client()
         topics = await self._discover_topics(rag_client, workspace, agent_name)
         if not topics:
             logger.warning(f"No topics discovered for '{agent_name}'")

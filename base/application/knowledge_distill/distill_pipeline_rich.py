@@ -32,7 +32,7 @@ from base.configs import PMCADistillationConfig
 try:
     from core.knowledge.factory.lightrag import PMCALightRAGClient
     from core.memory.factory.mem0 import PMCAMem0LocalService
-    from core.client import LLMFactory, ProviderType, DutyType
+    from core.client import LLMFactory, ProviderType
     from autogen_core.models import SystemMessage
     from autogen_agentchat.messages import UserMessage
     from loguru import logger
@@ -186,7 +186,7 @@ class PMCADistillationPipelineRich(PMCADistillationPipeline):
     async def run(self, agent_name: str, workspace: str) -> str:
         """Run the pipeline for a single agent, showing the final injection message."""
         rag_client = PMCALightRAGClient()
-        llm_client = LLMFactory.client(ProviderType.DEEPSEEK, DutyType.BASE)
+        llm_client = LLMFactory.client()
         topics = await self._discover_topics(rag_client, workspace, agent_name)
         if not topics:
             logger.warning(f"No topics discovered for '{agent_name}'")
