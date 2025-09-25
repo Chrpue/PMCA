@@ -11,12 +11,12 @@ from .assistant_config import PMCAAssistantMetadata
 
 
 from core.memory.factory.mem0 import PMCAMem0LocalService
-from base.runtime import PMCATaskContext
 from core.tools.factory import PMCAToolFactory
 
 
 if TYPE_CHECKING:
     from core.team.core_assistants import PMCACoreAssistants
+    from base.runtime import PMCATaskContext
 
 
 class PMCAAssistantFactory:
@@ -26,10 +26,12 @@ class PMCAAssistantFactory:
 
     _registry: Dict[str, Type[PMCAAssistantMetadata]] = {}
 
-    def __init__(self, ctx: PMCATaskContext):
+    def __init__(self, ctx: "PMCATaskContext"):
         """
         工厂初始化，仅依赖于任务上下文。
         """
+        from base.runtime import PMCATaskContext
+
         self.ctx = ctx
 
     @classmethod
@@ -39,6 +41,27 @@ class PMCAAssistantFactory:
             return meta_cls
 
         return decorator
+
+    # @classmethod
+    # def register(
+    #     cls, biz_type: str, meta_cls: Optional[Type[PMCAAssistantMetadata]] = None
+    # ):
+    #     """
+    #     注册一个智能体元数据蓝图。
+    #     这个方法既可以作为装饰器使用，也可以直接调用。
+    #     """
+    #     if meta_cls is None:
+    #         # 作为装饰器使用: @PMCAAssistantFactory.register("MyAgent")
+    #         def decorator(meta_cls_decorated: Type[PMCAAssistantMetadata]):
+    #             cls._registry[biz_type] = meta_cls_decorated
+    #             logger.debug(f"智能体 '{biz_type}' 已通过装饰器注册。")
+    #             return meta_cls_decorated
+    #
+    #         return decorator
+    #     else:
+    #         # 直接调用: PMCAAssistantFactory.register("MyAgent", MyAgentMetadata)
+    #         cls._registry[biz_type] = meta_cls
+    #         logger.debug(f"智能体 '{biz_type}' 已通过直接调用注册。")
 
     @classmethod
     def all_registered_assistants(cls) -> Dict[str, PMCAAssistantMetadata]:

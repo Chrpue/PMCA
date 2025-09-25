@@ -6,6 +6,7 @@ from core.client import AbilityType
 
 @PMCAAssistantFactory.register("PMCAMasterOfMemory")
 class PMCAMasterOfMemory(PMCAAssistantMetadata):
+    name: str = "PMCAMasterOfMemory"
     description: str = "管理各智能体的个性化记忆库（mem0），负责将提炼后的知识转化为具体、可用的工作记忆。"
 
     system_message: str = """

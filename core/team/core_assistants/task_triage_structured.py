@@ -13,6 +13,8 @@ class PMCATriageStructured(PMCAAssistantMetadata):
     用户任务分诊结果的结构化输出
     """
 
+    name: str = PMCACoreAssistants.TRIAGE_STRUCTURED.value
+
     description: str = "将分诊结果进行结构化输出的助手。"
 
     ability: AbilityType = AbilityType.DEFAULT

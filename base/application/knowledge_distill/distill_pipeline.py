@@ -30,7 +30,7 @@ distilled knowledge into mem0.
 
 import asyncio
 import json
-import os
+import re
 import importlib
 from dataclasses import dataclass
 from typing import Dict, List, Optional
@@ -232,9 +232,12 @@ class PMCADistillationPipeline:
             return ""
         injection = self._build_injection(profile)
         if self.config.inject and injection:
-            await asyncio.to_thread(
-                PMCAMem0LocalService.add_memory,
-                agent_name,
+            transformed_name = re.sub(
+                r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", agent_name
+            ).lower()
+
+            await PMCAMem0LocalService.add_memory(
+                transformed_name,
                 injection,
                 {"category": "seed", "source": f"distillation:{self.config.template}"},
             )

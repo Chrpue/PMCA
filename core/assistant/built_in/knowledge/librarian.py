@@ -6,6 +6,7 @@ from core.client import AbilityType
 
 @PMCAAssistantFactory.register("PMCAKnowledgeLibrarian")
 class PMCAKnowledgeLibrarian(PMCAAssistantMetadata):
+    name: str = "PMCAKnowledgeLibrarian"
     description: str = (
         "管理和维护系统的中央知识库（LightRAG），提供文档录入和信息检索服务。"
     )

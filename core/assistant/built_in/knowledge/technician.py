@@ -6,6 +6,7 @@ from core.client import AbilityType
 
 @PMCAAssistantFactory.register("PMCAKnowledgeTechnician")
 class PMCAKnowledgeTechnician(PMCAAssistantMetadata):
+    name: str = "PMCAKnowledgeTechnician"
     description: str = (
         "对原始知识进行深度加工和提炼，生成面向特定任务的、高度浓缩的核心洞察。"
     )

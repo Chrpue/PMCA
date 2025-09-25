@@ -13,6 +13,8 @@ class PMCATriageReviewer(PMCAAssistantMetadata):
     用户任务分诊评测智能体（对任务分诊智能体产出的结果进行评估的智能体）
     """
 
+    name: str = PMCACoreAssistants.TRIAGE_REVIEWER.value
+
     description: str = "一个评估针对用户任务意图理解、行动分工的决策结果的智能体，负责评估任务分诊是否合理，提出建设性意见。"
 
     ability: AbilityType = AbilityType.DEFAULT

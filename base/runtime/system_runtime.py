@@ -65,6 +65,8 @@ class PMCARuntime:
 
     async def _initialize_assistants_registry(self) -> None:
         """读取 AgentFactory 注册表并缓存。"""
+        from core.assistant.factory import PMCAAssistantFactory
+
         self._registered_assistants = PMCAAssistantFactory.all_registered_assistants()
         logger.info(f"Registered agents: {list(self._registered_assistants.keys())}")
 
@@ -75,6 +77,8 @@ class PMCARuntime:
 
     def create_task_context(self, mission: str = "") -> PMCATaskContext:
         """创建任务上下文（任务隔离）。"""
+        from core.assistant.factory import PMCAAssistantFactory
+
         task_id = uuid.uuid4().hex[:8]
         workbench = PMCATaskWorkbenchManager.create_workbench(task_id, self.redis)
         task_ctx = PMCATaskContext(

@@ -35,6 +35,7 @@ serves as a self‑contained example of how to enhance the mem0 service.
 
 import re
 import copy
+import asyncio
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
@@ -92,7 +93,7 @@ class PMCAMem0LocalService:
                 f"Creating new mem0 instance for '{agent_name}', collection='{collection}'"
             )
             cls._instances[agent_name] = Mem0Memory(
-                user_id=agent_name, is_cloud=False, config=config
+                user_id=collection, is_cloud=False, config=config
             )
         return cls._instances[agent_name]
 
@@ -102,7 +103,7 @@ class PMCAMem0LocalService:
         return cls._get_instance(agent_name)
 
     @classmethod
-    def add_memory(
+    async def add_memory(
         cls,
         agent_name: str,
         content: str,
@@ -136,17 +137,11 @@ class PMCAMem0LocalService:
         logger.debug(
             f"Adding memory for agent '{agent_name}' with metadata {metadata or {}}"
         )
-        import asyncio
 
-        # Use a fresh event loop for the asynchronous add operation
-        def _run_add():
-            return instance.add(mem)  # type: ignore
-
-        # Run the coroutine synchronously
-        asyncio.run(_run_add())
+        await instance.add(mem)
 
     @classmethod
-    def retrieve_memory(
+    async def retrieve_memory(
         cls,
         agent_name: str,
         query: str,
@@ -180,21 +175,16 @@ class PMCAMem0LocalService:
             f"Searching memory for agent '{agent_name}' with query='{query}', top_k={top_k}, "
             f"metadata_filter={metadata_filter}"
         )
-        import asyncio
 
-        async def _query():
-            # Pass through metadata_filter via kwargs; mem0 may ignore unknown keys
-            kwargs = {}
-            if metadata_filter:
-                kwargs["metadata_filter"] = metadata_filter
-            return await instance.query(query, limit=top_k, **kwargs)  # type: ignore
+        kwargs = {}
+        if metadata_filter:
+            kwargs["metadata_filter"] = metadata_filter
 
-        result = asyncio.run(_query())
-        # ``query`` returns a MemoryQueryResult; extract list of MemoryContent
-        return result.results  # type: ignore
+        result = await instance.query(query, limit=top_k, **kwargs)
+        return result.results
 
     @classmethod
-    def clear_memory(
+    async def clear_memory(
         cls,
         agent_name: str,
         ids: Optional[List[str]] = None,
@@ -222,45 +212,109 @@ class PMCAMem0LocalService:
         Returns:
             The number of records deleted, or 0 if unsupported.
         """
+        """
+        为一个给定的智能体异步地删除记忆条目。
+        """
         instance = cls._get_instance(agent_name)
-        import asyncio
 
         if ids is None and metadata_filter is None:
-            logger.debug(f"Deleting *all* memory for agent '{agent_name}'...")
-
-            async def _clear_all():
-                await instance.clear()  # type: ignore
-                return 0
-
-            return asyncio.run(_clear_all())
-        if ids is not None and metadata_filter is not None:
-            raise ValueError(
-                "Cannot specify both 'ids' and 'metadata_filter' when clearing memory."
-            )
-        logger.debug(
-            f"Deleting memory for agent '{agent_name}' with ids={ids} metadata_filter={metadata_filter}"
-        )
-        # Access internal client to perform fine‑grained deletions
-        client = getattr(instance, "_client", None)
-        if client is None:
-            logger.warning(
-                "Underlying mem0 client is not accessible; cannot delete selectively."
-            )
+            logger.debug(f"删除智能体 '{agent_name}' 的 *所有* 记忆...")
+            await instance.clear()
             return 0
 
-        async def _delete():
-            try:
-                # Some clients require keyword names to match; we try both
-                if ids is not None:
-                    return client.delete(ids=ids, user_id=agent_name)  # type: ignore
-                if metadata_filter is not None:
-                    return client.delete(
-                        metadata_filter=metadata_filter, user_id=agent_name
-                    )  # type: ignore
-                return 0
-            except Exception as e:
-                logger.error(f"Error deleting mem0 memory: {e}")
-                return 0
+        if ids is not None and metadata_filter is not None:
+            raise ValueError("清除记忆时不能同时指定 'ids' 和 'metadata_filter'。")
 
-        # Running the underlying deletion synchronously (delete may be sync)
-        return asyncio.run(_delete())
+        logger.debug(
+            f"为智能体 '{agent_name}' 删除记忆，ids={ids} metadata_filter={metadata_filter}"
+        )
+
+        client = getattr(instance, "_client", None)
+        if client is None:
+            logger.warning("无法访问底层的 mem0 客户端；无法执行选择性删除。")
+            return 0
+
+        try:
+            # 假设底层的 delete 方法也是异步的
+            if ids is not None:
+                await client.delete(ids=ids, user_id=agent_name)
+            elif metadata_filter is not None:
+                await client.delete(metadata_filter=metadata_filter, user_id=agent_name)
+            return 0  # 底层 API 可能不返回计数
+        except Exception as e:
+            # 检查 delete 方法是否可等待
+            if "is not awaitable" in str(e):
+                logger.warning("底层的 mem0 delete 方法可能不是异步的。尝试同步调用。")
+                if ids is not None:
+                    client.delete(ids=ids, user_id=agent_name)
+                elif metadata_filter is not None:
+                    client.delete(metadata_filter=metadata_filter, user_id=agent_name)
+                return 0
+            logger.error(f"删除 mem0 记忆时出错: {e}")
+            return 0
+
+    @classmethod
+    async def shutdown(cls):
+        """
+        优雅地关闭所有缓存的 Mem0Memory 实例。
+        这个最终版本会深入实例内部，找到真正的数据库客户端并关闭它们。
+        """
+        logger.info(f"开始关闭所有 {len(cls._instances)} 个 mem0 实例和数据库连接...")
+
+        if not cls._instances:
+            logger.warning(
+                "PMCAMem0LocalService._instances 字典为空，没有实例可以关闭。"
+            )
+            return
+
+        async_close_tasks = []
+
+        for agent_name, instance in cls._instances.items():
+            logger.debug(f"正在处理 agent '{agent_name}' 的实例...")
+
+            # autogen 的包装器是 'instance'
+            # mem0 的核心对象是 'instance._client'
+            mem0_core_object = getattr(instance, "_client", None)
+
+            if not mem0_core_object:
+                logger.warning(f"Agent '{agent_name}' 的实例没有找到 _client 属性。")
+                continue
+
+            # --- 核心修正：深入核心对象内部，寻找真正的数据库存储客户端 ---
+            # 向量数据库客户端通常存储在 'vector_store' 属性里
+            vector_store_client = getattr(mem0_core_object, "vector_store", None)
+
+            if (
+                vector_store_client
+                and hasattr(vector_store_client, "close")
+                and callable(vector_store_client.close)
+            ):
+                # 假设 close 是异步的，这对于数据库客户端是很常见的
+                if asyncio.iscoroutinefunction(vector_store_client.close):
+                    logger.debug(
+                        f"发现 agent '{agent_name}' 的 vector_store 有异步 close 方法，添加到任务列表。"
+                    )
+                    async_close_tasks.append(vector_store_client.close())
+                else:
+                    # 如果是同步的，就在线程中运行
+                    logger.debug(
+                        f"发现 agent '{agent_name}' 的 vector_store 有同步 close 方法，在线程中执行。"
+                    )
+                    try:
+                        await asyncio.to_thread(vector_store_client.close)
+                    except Exception as e:
+                        logger.error(f"调用同步 close 方法时出错: {e}")
+            else:
+                logger.warning(
+                    f"Agent '{agent_name}' 的 vector_store 没有找到可调用的 'close' 方法。"
+                )
+
+        # 并发执行所有找到的异步关闭任务
+        if async_close_tasks:
+            await asyncio.gather(*async_close_tasks)
+            logger.success("所有异步 mem0 客户端已成功关闭。")
+        else:
+            logger.warning("在所有实例中均未找到可关闭的异步客户端。")
+
+        cls._instances.clear()
+        logger.info("实例缓存已清空。")

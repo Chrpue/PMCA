@@ -13,6 +13,8 @@ class PMCATriage(PMCAAssistantMetadata):
     用户任务分诊（根据用户任务决策应由哪些智能体参加等）
     """
 
+    name: str = PMCACoreAssistants.TRIAGE.value
+
     description: str = (
         "一个顶层的战略规划与任务抉择智能体，负责理解用户意图，对用户任务进行分诊。"
     )
@@ -26,7 +28,7 @@ class PMCATriage(PMCAAssistantMetadata):
 
     model_client_stream: bool = True
 
-    reflect_on_tool_use: bool = True
+    reflect_on_tool_use: bool = False
 
     max_tool_iterations: int = 10
 

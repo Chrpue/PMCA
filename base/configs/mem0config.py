@@ -13,11 +13,13 @@ PMCAMem0LocalConfig = {
         "provider": "pgvector",
         "config": {
             "collection_name": "mem0",
+            "dbname": "postgres",
             "host": "localhost",
             "port": 25432,
             "user": "postgres",
             "password": "postgres",
             "embedding_model_dims": 1024,
+            "connection_string": "postgresql://postgres:postgres@localhost:25432/postgres",
         },
     },
     "embedder": {
