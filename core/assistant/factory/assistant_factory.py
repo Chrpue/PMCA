@@ -201,3 +201,11 @@ class PMCAAssistantFactory:
         final_params = {k: v for k, v in assistant_params.items() if v is not None}
 
         return AssistantAgent(**final_params)
+
+
+# if meta.tools_type == "tools":
+#     tools = ToolFactory().get_tools_for_agent(agent_name=meta.name or biz_type)
+#     workbench = None
+# elif meta.tools_type == "mcp":
+#     tools = None
+#     workbench = ...  # 原有逻辑
