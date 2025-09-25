@@ -62,7 +62,7 @@ class PMCADistillationPipeline:
         # Base module path where prompt templates reside.  By default
         # this points to ``base.knowledge.distill.prompts``.  You can
         # override it by providing ``prompts_module``.
-        self.prompts_module_base = prompts_module or "base.knowledge.distill.prompts"
+        self.prompts_module_base = prompts_module or "base.prompts.knowledge_distill"
         # Cache loaded templates
         self._templates: Dict[str, Dict[str, str]] = {}
 

@@ -1,4 +1,4 @@
-from .knowledge_query import PMCALightRAGClient
+from .lightrag.service import PMCALightRAGClient
 
 __all__ = [
     "PMCALightRAGClient",

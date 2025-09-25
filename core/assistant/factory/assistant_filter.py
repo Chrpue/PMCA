@@ -1,14 +1,12 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict
 
-from loguru import logger
 
 from base.prompts.task_triage import (
     PMCATRIAGE_SYSTEM_MESSAGE,
     PMCATRIAGE_REVIEWER_SYSTEM_MESSAGE,
     PMCATRIAGE_STRUCTURED_SYSTEM_MESSAGE,
 )
-from base.runtime.task_context import PMCATaskContext
 
 if TYPE_CHECKING:
     from .assistant_factory import PMCAAssistantFactory
@@ -22,7 +20,7 @@ class PMCAAssistantFilter:
     使 AssistantFactory 保持通用和纯粹。
     """
 
-    def __init__(self, factory_instance: "PMCAAssistantFactory"):
+    def __init__(self, factory_instance):
         """
         初始化过滤器。
 

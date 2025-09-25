@@ -13,7 +13,6 @@ from .assistant_config import PMCAAssistantMetadata
 from core.memory.factory.mem0 import PMCAMem0LocalService
 from base.runtime import PMCATaskContext
 from core.tools.factory import PMCAToolFactory
-from .assistant_filter import PMCAAssistantFilter
 
 
 if TYPE_CHECKING:
@@ -97,6 +96,9 @@ class PMCAAssistantFactory:
         """
         基于元数据构建一个 AssistantAgent 实例。
         """
+
+        from .assistant_filter import PMCAAssistantFilter
+
         if biz_type not in self._registry:
             raise ValueError(f"未知的业务类型: {biz_type}")
 

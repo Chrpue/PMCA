@@ -1,11 +1,15 @@
 import asyncio
+from typing import TYPE_CHECKING
 import uuid
 from loguru import logger
 from redis import asyncio as aioredis
 
 from base.configs import PMCASystemEnvConfig
 from core.client.llm_factory import LLMFactory
-from core.assistant.factory import PMCAAssistantFactory
+
+if TYPE_CHECKING:
+    from core.assistant.factory import PMCAAssistantFactory
+    from base.runtime import PMCATaskContext
 from core.memory.factory.mem0 import PMCAMem0LocalService
 
 from .task_context import PMCATaskContext
