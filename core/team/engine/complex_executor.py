@@ -2,7 +2,8 @@ from typing import List
 from autogen_agentchat.base import ChatAgent, Team
 from autogen_agentchat.teams import RoundRobinGroupChat, SelectorGroupChat
 from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermination
-from base.prompts.complex_task.complex_task_prompt import (
+from loguru import logger
+from base.prompts.complex_task import (
     PMCACOMPLEXTASK_SELECTORGROUP_SYSTEM_MESSAGE,
 )
 from base.runtime.task_context import PMCATaskContext
@@ -32,7 +33,7 @@ class PMCAComplexTaskTeam(PMCATeamFactory):
         """
         初始化分诊环节的最大轮询次数（环境变量提供）
         """
-        return MaxMessageTermination(self._ctx.task_env.TRIAGE_MAX_TURNS)
+        return MaxMessageTermination(self._ctx.task_env.COMPLEX_EXECUTOR_MAX_TURNS)
 
     async def _build_team_participants(self) -> None:
         """
@@ -53,6 +54,8 @@ class PMCAComplexTaskTeam(PMCATeamFactory):
 
         triage_result = await self._ctx.task_workbench.get_item("triage_result")
 
+        logger.success(f"**1**{self._participants}")
+
         for team_info in triage_result.get("team"):
             swarm_team_name = team_info.get("name")
             swarm_team_description = team_info.get("description")
@@ -69,6 +72,8 @@ class PMCAComplexTaskTeam(PMCATeamFactory):
                 PMCACoreAssistants.TRIAGE_REVIEWER.value
             )
         )
+
+        logger.success(f"**2**{self._participants}")
 
     def _build_team(self) -> Team:
         return SelectorGroupChat(

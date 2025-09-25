@@ -10,6 +10,7 @@ from core.memory.factory.mem0 import PMCAMem0LocalService
 
 from .task_context import PMCATaskContext
 from .system_workbench import PMCATaskWorkbenchManager
+import core.assistant.built_in
 
 
 class PMCARuntime:
@@ -50,6 +51,13 @@ class PMCARuntime:
 
             self._initialized = True
             logger.success("PMCARuntime initialized.")
+
+    def _log_registered_assistants(self):
+        """打印日志，验证所有智能体是否已成功注册。"""
+        from core.assistant.factory import PMCAAssistantFactory
+
+        registered_agents = PMCAAssistantFactory.all_registered_assistants().keys()
+        logger.info(f"当前已注册的智能体: {list(registered_agents)}")
 
     async def _initialize_assistants_registry(self) -> None:
         """读取 AgentFactory 注册表并缓存。"""

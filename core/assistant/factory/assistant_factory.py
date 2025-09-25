@@ -12,13 +12,9 @@ from .assistant_config import PMCAAssistantMetadata
 
 from core.memory.factory.mem0 import PMCAMem0LocalService
 from base.runtime import PMCATaskContext
-from core.client import supports_structured_output
-from base.prompts.task_triage import (
-    PMCATRIAGE_SYSTEM_MESSAGE,
-    PMCATRIAGE_REVIEWER_SYSTEM_MESSAGE,
-    PMCATRIAGE_STRUCTURED_SYSTEM_MESSAGE,
-)
-from core.team.common import PMCATriageResult
+from core.tools.factory import PMCAToolFactory
+from .assistant_filter import PMCAAssistantFilter
+
 
 if TYPE_CHECKING:
     from core.team.core_assistants import PMCACoreAssistants
@@ -45,38 +41,6 @@ class PMCAAssistantFactory:
 
         return decorator
 
-    def _create_triage_assistant_params(
-        self, base_params: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        final_system_message = PMCATRIAGE_SYSTEM_MESSAGE.format(
-            available_assistants=self.professional_assistants_description()
-        )
-        base_params["system_message"] = final_system_message
-
-        return base_params
-
-    def _create_triage_structured_assistant_params(
-        self, base_params: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        final_system_message = PMCATRIAGE_STRUCTURED_SYSTEM_MESSAGE
-        base_params["system_message"] = final_system_message
-
-        return base_params
-
-    def _create_triage_reviewer_assistant_params(
-        self, base_params: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        final_system_message = PMCATRIAGE_REVIEWER_SYSTEM_MESSAGE.format(
-            available_assistants=self.professional_assistants_description()
-        )
-        base_params["system_message"] = final_system_message
-
-        # if supports_structured_output(ProviderType(provider), model_name):
-        #     base_params["output_content_type"] = PMCATriageResult
-        #     base_params["reflect_on_tool_use"] = False
-
-        return base_params
-
     @classmethod
     def all_registered_assistants(cls) -> Dict[str, PMCAAssistantMetadata]:
         """
@@ -94,49 +58,35 @@ class PMCAAssistantFactory:
 
         all_assistants = cls.all_registered_assistants()
         desc_parts = [
-            f"- {meta.chinese_name} ({name}):{meta.duty}:{meta.metadata}"
+            f"- {meta.chinese_name} ({name})\n{meta.duty}元数据:{meta.metadata}\n"
             for name, meta in all_assistants.items()
             if not PMCACoreAssistants.is_core_assistant(name)
         ]
         return "\n".join(desc_parts)
 
-    def _create_workbench(
-        self, meta: PMCAAssistantMetadata
-    ) -> Optional[List[Workbench]]:
+    def _create_tools(self, biz_type: str) -> Dict[str, Any]:
         """
-        根据 required_mcp_keys 创建 Workbench 列表
+        根据智能体的业务类型，为其创建 Workbench 或从 ToolFactory 获取 Tools。
         """
+        meta_cls = self._registry[biz_type]
+        meta = meta_cls()
+        assistant_name = meta.name or biz_type
 
-        if not meta.required_mcp_keys:
-            return None
+        if meta.tools_type == "workbench":
+            if not meta.required_mcp_keys:
+                return {}
+            workbenches: List[Workbench] = []
+            mcp_servers = self.ctx.task_env.get_mcp_servers()
+            for key in meta.required_mcp_keys:
+                if key in mcp_servers:
+                    workbenches.append(McpWorkbench(server_params=mcp_servers[key]))
+            return {"workbench": workbenches}
 
-        workbenches: List[Workbench] = []
-        mcp_servers = self.ctx.task_env.get_mcp_servers()
-        for key in meta.required_mcp_keys:
-            if key in mcp_servers:
-                workbenches.append(McpWorkbench(server_params=mcp_servers[key]))
-        return workbenches if workbenches else None
-
-    def _create_tools(self, meta: PMCAAssistantMetadata) -> Optional[List[BaseTool]]:
-        """
-        将元数据中定义的函数转换为 autogen 的 FunctionTool 列表
-        """
-
-        if not meta.tools:
-            return None
-
-        autogen_tools: List[BaseTool] = []
-        for tool in meta.tools:
-            if callable(tool):
-                description = (
-                    tool.__doc__
-                    if tool.__doc__
-                    else f"一个名为 {tool.__name__} 的自定义工具。"
-                )
-                autogen_tools.append(FunctionTool(func=tool, description=description))
-            elif isinstance(tool, BaseTool):
-                autogen_tools.append(tool)
-        return autogen_tools if autogen_tools else None
+        elif meta.tools_type == "tools":
+            tools: List[BaseTool] = PMCAToolFactory.tools(assistant_name)
+            if tools:
+                return {"tools": tools}
+        return {}
 
     def create_assistant(
         self,
@@ -152,26 +102,12 @@ class PMCAAssistantFactory:
 
         meta = self._registry[biz_type]()
 
-        model_client = self.ctx.llm_factory.client(meta.ability)
-
-        # 2.2 工具或 Workbench (根据 tools_type 决定)
-        tools: Optional[List[BaseTool]] = None
-        workbench: Optional[List[Workbench]] = None
-        if meta.tools_type == "tools":
-            tools = self._create_tools(meta)
-        elif meta.tools_type == "workbench":
-            workbench = self._create_workbench(meta)
-
-        memory = [PMCAMem0LocalService.memory(meta.name or biz_type)]
-
         assistant_params = {
             "name": meta.name or biz_type,
-            "model_client": model_client,
+            "model_client": self.ctx.llm_factory.client(meta.ability),
             "description": meta.description,
             "system_message": meta.system_message,
-            "memory": memory,
-            "tools": tools,
-            "workbench": workbench,
+            "memory": [PMCAMem0LocalService.memory(meta.name or biz_type)],
             "model_client_stream": meta.model_client_stream,
             "reflect_on_tool_use": meta.reflect_on_tool_use,
             "max_tool_iterations": meta.max_tool_iterations,
@@ -181,31 +117,12 @@ class PMCAAssistantFactory:
             # 注意: output_content_type 等更高级的参数也可以在这里添加
         }
 
-        from core.team.core_assistants import PMCACoreAssistants
-
-        if biz_type == PMCACoreAssistants.TRIAGE.value:
-            assistant_params = self._create_triage_assistant_params(assistant_params)
-
-        if biz_type == PMCACoreAssistants.TRIAGE_REVIEWER.value:
-            assistant_params = self._create_triage_reviewer_assistant_params(
-                assistant_params
-            )
-
-        if biz_type == PMCACoreAssistants.TRIAGE_STRUCTURED.value:
-            assistant_params = self._create_triage_structured_assistant_params(
-                assistant_params
-            )
-
+        assistant_params = PMCAAssistantFilter(self).build_params(
+            biz_type, assistant_params
+        )
+        assistant_params.update(self._create_tools(biz_type))
         assistant_params.update(override_kwargs)
 
         final_params = {k: v for k, v in assistant_params.items() if v is not None}
 
         return AssistantAgent(**final_params)
-
-
-# if meta.tools_type == "tools":
-#     tools = ToolFactory().get_tools_for_agent(agent_name=meta.name or biz_type)
-#     workbench = None
-# elif meta.tools_type == "mcp":
-#     tools = None
-#     workbench = ...  # 原有逻辑
