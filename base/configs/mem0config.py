@@ -19,7 +19,6 @@ PMCAMem0LocalConfig = {
             "user": "postgres",
             "password": "postgres",
             "embedding_model_dims": 1024,
-            "connection_string": "postgresql://postgres:postgres@localhost:25432/postgres",
         },
     },
     "embedder": {
