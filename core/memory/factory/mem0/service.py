@@ -1,142 +1,131 @@
-# 文件路径: core/memory/factory/mem0/service.py
-# 最终决定版
-
 import copy
 import re
 import threading
-from loguru import logger
 from typing import Any, Dict, List, Optional
-from tenacity import (
-    retry,
-    wait_exponential,
-    stop_after_attempt,
-    retry_if_exception_type,
-)
-from sqlalchemy.exc import OperationalError, InterfaceError
 
+from loguru import logger
 
-try:
-    from autogen_ext.memory.mem0 import Mem0Memory
-    from base.configs import PMCAMem0LocalConfig
-    from autogen_core.memory import MemoryContent, MemoryMimeType
-except ImportError as e:
-    raise ImportError(
-        f"依赖导入失败: {e}。请确保 'autogen-ext[mem0-local]' 已安装。"
-    ) from e
+# 确认这些是项目中的正确导入路径
+from autogen_ext.memory.mem0 import Mem0Memory
+from autogen_core.memory import MemoryContent, MemoryQueryResult
+
+# 导入你的 mem0 配置文件
+from base.configs import mem0config
 
 
 class PMCAMem0LocalService:
     """
-    一个稳健的、为每个智能体提供独立 Mem0 实例的工厂服务。
+    一个线程安全的服务，用于管理和访问多个智能体 (Assistant) 的 Mem0 记忆实例。
+
+    该服务基于 AutoGen 官方提供的 Mem0Memory 源码进行封装，严格使用其暴露的公共接口。
+    它采用单例模式缓存每个智能体的记忆实例，并依赖底层库进行连接和生命周期管理。
     """
 
-    _base_config: Dict[str, Any] = PMCAMem0LocalConfig
     _instances: Dict[str, Mem0Memory] = {}
-    _lock: threading.Lock = threading.Lock()
-    USE_COLLECTION_AS_USER_ID: bool = True
+    _lock = threading.Lock()
 
     @staticmethod
-    def _agent_to_collection(agent_name: str) -> str:
-        """将智能体名称规范化为安全的数据库集合名称。"""
-        return re.sub(
-            r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", agent_name
-        ).lower()
+    def _assistant_name_to_collection(assistant_name: str) -> str:
+        """
+        将驼峰式命名的智能体 (Assistant) 名称转换为蛇形命名 (snake_case) 的集合名称。
+        例如: 'PMCAQueryAssistant' -> 'pmca_query_assistant'
+        """
+        s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", assistant_name)
+        return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
     @classmethod
-    def _build_config_for_agent(cls, agent_name: str) -> Dict[str, Any]:
+    def instance(cls, assistant_name: str) -> Mem0Memory:
         """
-        基于基础模板，为指定的智能体创建一份“独立且干净”的配置。
+        为指定的智能体创建一个新的、配置隔离的 Mem0Memory 实例。
+        此方法为内部使用，外部请调用 memory()。
         """
-        cfg = copy.deepcopy(cls._base_config)
-        collection = cls._agent_to_collection(agent_name)
-        vs_config = cfg.setdefault("vector_store", {}).setdefault("config", {})
-        vs_config["collection_name"] = collection
-        return cfg
-
-    @classmethod
-    def _make_instance(cls, agent_name: str) -> Mem0Memory:
-        """
-        创建一个新的 Mem0Memory 实例，并包含构造后的强制修正逻辑。
-        """
-        cfg = cls._build_config_for_agent(agent_name)
-        intended_collection = cfg["vector_store"]["config"]["collection_name"]
-        user_id = intended_collection if cls.USE_COLLECTION_AS_USER_ID else agent_name
-
-        logger.debug(
-            f"正在创建 mem0 实例: agent='{agent_name}', 期望的 collection='{intended_collection}'"
-        )
-
-        instance = Mem0Memory(user_id=user_id, is_cloud=False, config=cfg)
-
         try:
-            client = getattr(instance, "_client", None)
-            if client:
-                top_level_config = getattr(client, "config", None)
-                if top_level_config and hasattr(top_level_config, "vector_store"):
-                    vector_store_config_obj = getattr(
-                        top_level_config.vector_store, "config", None
-                    )
-                    if vector_store_config_obj:
-                        actual_collection = getattr(
-                            vector_store_config_obj, "collection_name", None
-                        )
-                        if actual_collection != intended_collection:
-                            logger.warning(
-                                f"检测到 mem0 库配置污染: collection_name 被设置为 '{actual_collection}'。"
-                                f"正在为 agent '{agent_name}' 强制修正回 '{intended_collection}'..."
-                            )
-                            setattr(
-                                vector_store_config_obj,
-                                "collection_name",
-                                intended_collection,
-                            )
-                            logger.success(
-                                f"修正成功: agent '{agent_name}' 的 collection_name 已被设置为 '{intended_collection}'。"
-                            )
+            config = copy.deepcopy(mem0config.PMCAMem0LocalConfig)
+            vector_store_config = config.get("vector_store", {})
+
+            if vector_store_config.get("provider") != "qdrant":
+                raise ValueError(
+                    "Configuration error: mem0 vector_store provider must be 'qdrant'."
+                )
+
+            collection_name = cls._assistant_name_to_collection(assistant_name)
+            vector_store_config.setdefault("config", {})["collection_name"] = (
+                collection_name
+            )
+
+            # 根据源码，user_id 也非常重要，它在 clear() 操作中是关键标识符。
+            # 我们将 assistant_name 同时用作 user_id，确保记忆隔离。
+            return Mem0Memory(user_id=assistant_name, is_cloud=False, config=config)
         except Exception as e:
-            logger.error(f"尝试修正 collection_name 时发生意外错误: {e}")
-
-        return instance
+            logger.error(
+                f"Failed to create memory instance for assistant '{assistant_name}': {e}"
+            )
+            raise
 
     @classmethod
-    def memory(cls, agent_name: str) -> Mem0Memory:
+    def memory(cls, assistant_name: str) -> Mem0Memory:
         """
-        获取（如果不存在则创建）指定智能体的 Mem0Memory 缓存单例。
-        注意：此方法主要用于非写入操作，如查询。
+        获取指定智能体的记忆实例 (线程安全)。
+        如果实例不存在，则创建并缓存。
         """
-        if agent_name in cls._instances:
-            return cls._instances[agent_name]
+        if assistant_name in cls._instances:
+            return cls._instances[assistant_name]
+
         with cls._lock:
-            if agent_name not in cls._instances:
-                cls._instances[agent_name] = cls._make_instance(agent_name)
-            return cls._instances[agent_name]
+            if assistant_name not in cls._instances:
+                cls._instances[assistant_name] = cls.instance(assistant_name)
+            return cls._instances[assistant_name]
 
-    # [最终核心修复]：让 add_memory 方法总是创建一个全新的实例来写入，保证连接新鲜
     @classmethod
-    @retry(
-        reraise=True,
-        wait=wait_exponential(multiplier=0.5, min=0.5, max=8),
-        stop=stop_after_attempt(5),
-        retry=retry_if_exception_type((OperationalError, InterfaceError)),
-    )
-    async def add_memory(
-        cls, agent_name: str, content: str, metadata: Optional[Dict[str, Any]] = None
+    async def add(
+        cls,
+        assistant_name: str,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
-        通过创建一个临时的、全新的 mem0 实例来安全地添加记忆。
-        这可以确保我们使用的是一个新鲜的数据库连接，避免因连接池中连接失效而导致的静默失败。
+        向指定智能体的记忆中添加一条新内容。
         """
-        logger.info(f"[mem0] 新实例写入（带重试） agent={agent_name}")
-        temp_instance = cls._make_instance(agent_name)
-        mem_content = MemoryContent(
-            content=content, mime_type="text/plain", metadata=metadata or {}
-        )
-        await temp_instance.add(mem_content)
+        try:
+            memory_instance = cls.memory(assistant_name)
+            memory_content = MemoryContent(
+                content=content, mime_type="text/plain", metadata=metadata or {}
+            )
+            await memory_instance.add(memory_content)
+        except Exception as e:
+            logger.error(f"Failed to add memory for assistant '{assistant_name}': {e}")
 
     @classmethod
-    async def shutdown(cls):
-        instance_count = len(cls._instances)
-        if instance_count > 0:
-            logger.info(f"正在关闭 {instance_count} 个缓存的 mem0 实例...")
-            cls._instances.clear()
-            logger.success("所有缓存的 mem0 实例已关闭。")
+    async def query(
+        cls, assistant_name: str, query_text: str, limit: int = 5
+    ) -> List[MemoryContent]:
+        """
+        在指定智能体的记忆中进行语义搜索，并返回结果列表。
+        """
+        try:
+            memory_instance = cls.memory(assistant_name)
+            # 根据源码，query 方法的 **kwargs 可以传递 limit 参数
+            query_result: MemoryQueryResult = await memory_instance.query(
+                query=query_text, limit=limit
+            )
+            return query_result.results
+        except Exception as e:
+            logger.error(
+                f"Failed to query memory for assistant '{assistant_name}': {e}"
+            )
+            return []
+
+    @classmethod
+    async def clear(cls, assistant_name: str) -> None:
+        """
+        清空指定智能体的所有记忆。
+        此操作基于 user_id，我们在创建实例时已将 assistant_name 设为 user_id。
+        """
+        try:
+            memory_instance = cls.memory(assistant_name)
+            await memory_instance.clear()
+        except Exception as e:
+            logger.error(
+                f"Failed to clear memory for assistant '{assistant_name}': {e}"
+            )
+

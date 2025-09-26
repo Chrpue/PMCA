@@ -10,14 +10,11 @@ PMCAMem0LocalConfig = {
         },
     },
     "vector_store": {
-        "provider": "pgvector",
+        "provider": "qdrant",
         "config": {
             "collection_name": "mem0",
-            "dbname": "postgres",
             "host": "localhost",
-            "port": 25433,
-            "user": "postgres",
-            "password": "postgres",
+            "port": 26333,
             "embedding_model_dims": 1024,
         },
     },
