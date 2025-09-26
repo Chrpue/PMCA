@@ -15,7 +15,7 @@ PMCAMem0LocalConfig = {
             "collection_name": "mem0",
             "dbname": "postgres",
             "host": "localhost",
-            "port": 25432,
+            "port": 25433,
             "user": "postgres",
             "password": "postgres",
             "embedding_model_dims": 1024,

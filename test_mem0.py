@@ -13,7 +13,7 @@ async def test_mem0():
 
     # 构造 MemoryContent 对象并添加到 mem0
     content = MemoryContent(
-        content="张曦予的老公是彭冰.",
+        content="张曦予的生日是19860206",
         mime_type=MemoryMimeType.TEXT,
         metadata={"purpose": "connectivity_test"},
     )
