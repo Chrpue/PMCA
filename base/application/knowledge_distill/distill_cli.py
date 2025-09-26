@@ -70,7 +70,6 @@ except ImportError as exc:
         "PMCA modules required for distillation are missing. Make sure the PMCA "
         "project is installed and available on the Python path."
     ) from exc
-from core.memory.factory.mem0 import PMCAMem0LocalService
 
 
 def get_decision_agents() -> List[str]:
@@ -184,27 +183,21 @@ async def run() -> None:
     # Instantiate the pipeline
     pipeline = pipeline_class(config)
 
-    try:
-        # Run the pipeline for each agent sequentially.  You could also
-        # gather concurrently but sequential execution makes logs easier to
-        # follow when run from the command line.
-        results = await pipeline.run_agents(agents, args.workspace)
+    # Run the pipeline for each agent sequentially.  You could also
+    # gather concurrently but sequential execution makes logs easier to
+    # follow when run from the command line.
+    results = await pipeline.run_agents(agents, args.workspace)
 
-        # Print results to console
-        for name, injection in results.items():
-            print(injection)
-            if injection:
-                logger.info(
-                    f"Distillation completed for {name} (message length {len(injection)} chars)"
-                )
-            else:
-                logger.info("所有蒸馏任务已发送，等待3秒以确保数据库写入完成...")
-                await asyncio.sleep(5)  # 对于可能更重的蒸馏任务，可以给稍长一点时间
-                logger.warning(
-                    f"Distillation failed or returned empty injection for {name}"
-                )
-    finally:
-        await PMCAMem0LocalService.shutdown()
+    # Print results to console
+    for name, injection in results.items():
+        if injection:
+            logger.info(
+                f"Distillation completed for {name} (message length {len(injection)} chars)"
+            )
+        else:
+            logger.warning(
+                f"Distillation failed or returned empty injection for {name}"
+            )
 
 
 if __name__ == "__main__":

@@ -26,6 +26,7 @@ PMCAMem0LocalConfig = {
         "config": {
             "model": "bge-m3:latest",
             "ollama_base_url": "http://localhost:11434",
+            "embedding_dims": 1024,
         },
     },
     "graph_store": {
