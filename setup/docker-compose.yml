@@ -1,0 +1,47 @@
+name: mem0
+services:
+  mem0-qdrant:
+    image: qdrant/qdrant
+    container_name: mem0-qdrant
+    ports:
+      - "26333:6333"
+    networks:
+      - mem0_network
+    volumes:
+      - storage:/mem0/storage
+    healthcheck:
+      test: ["CMD", "wget", "-q", "http://localhost:6333/readyz", "-O", "-"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mem0-neo4j:
+    image: mem0/neo4j:5.26.4
+    container_name: mem0-neo4j
+    networks:
+      - mem0_network
+    healthcheck:
+      test: wget http://localhost:7687 || exit 1
+      interval: 1s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+    ports:
+      - "27474:7474" # HTTP
+      - "27687:7687" # Bolt
+    volumes:
+      - graph:/data
+    environment:
+      - NEO4J_AUTH=neo4j/mem0graph
+      - NEO4J_PLUGINS=["apoc"] # Add this line to install APOC
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_import_file_use__neo4j__config=true
+
+volumes:
+  storage:
+  graph:
+
+networks:
+  mem0_network:
+    driver: bridge

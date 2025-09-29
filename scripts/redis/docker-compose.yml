@@ -1,0 +1,23 @@
+services:
+  pmca-redis:
+    image: redis:7-alpine
+    container_name: pmca-redis
+    restart: unless-stopped
+
+    ports:
+      - "36379:6379"
+
+    command: redis-server --requirepass pmcaredis
+
+    volumes:
+      - redis-data:/data
+
+    networks:
+      - pmca-net
+
+volumes:
+  redis-data:
+
+networks:
+  pmca-net:
+    driver: bridge

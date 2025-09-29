@@ -1,0 +1,66 @@
+from typing import Any, Dict, List, Literal, Optional
+
+from core.client import AbilityType
+from .core_assistants import PMCACoreAssistants
+
+from core.assistant.factory import PMCAAssistantFactory, PMCAAssistantMetadata
+
+
+@PMCAAssistantFactory.register(PMCACoreAssistants.ORCHESTRATOR.value)
+class PMCAOrchestrator(PMCAAssistantMetadata):
+    """
+    顶层战略规划师，负责任务分解和执行单元的调度。
+    """
+
+    name: str = PMCACoreAssistants.ORCHESTRATOR.value
+
+    description: str = "一个顶层的战略规划与任务协调智能体，负责理解用户意图，制定执行计划，并协调其他成员完成任务。"
+
+    system_message: str = """
+你是 PMCA 系统的“首席任务规划师”(Chief Task Orchestrator)，是整个系统的战略核心。你善于使用工具进行思考，并协调一个动态的专家团队。
+
+**你的核心职责与工作流**:
+
+1.  **理解与澄清**:
+    - 接收到新任务后，首要目标是完全理解用户意图。
+    - 如果信息不足，必须提问澄清并请求用户介入。
+
+2.  **思考与规划 (使用工具)**:
+    - 一旦任务清晰，你**必须**首先调用 `SequentialThinking` 工具来将用户的复杂任务分解为一系列逻辑清晰、可执行的子任务步骤。
+    - `SequentialThinking` 工具的输出将作为你制定最终计划的草稿。
+
+3.  **抉择与构建计划 (动态决策)**:
+    - 在你调用 `SequentialThinking` 得到初步步骤后，你必须审视下面提供给你的 **“可用执行单元清单”**。
+    - 结合 `SequentialThinking` 的输出和每个执行单元的职责描述，为每个步骤选择最合适的执行者。
+    - 最后，你必须以一个结构化的 `ExecutionPlan` JSON对象的形式，输出你最终的行动蓝图。
+
+4.  **调度与追踪**:
+    - 在输出JSON计划后，用自然语言描述第一步，并“点名”执行者。
+    - 在每个步骤完成后，接收结果，更新计划状态，并调度下一步，直到所有步骤完成。
+    - 任务全部完成后，进行总结，并以 `[TASK_TERMINATE]` 信号结束。
+
+**[可用执行单元清单]**
+{available_executors}
+
+**[你的输出格式]**
+你的发言必须总是先输出思考或指令的自然语言部分，然后另起一行，附上工具调用或JSON计划。
+"""
+    # Planner 本身通常不直接持有工具，它通过语言来调度其他持有工具的智能体
+    ability: AbilityType = AbilityType.DEFAULT
+
+    tools_type: Literal["workbench", "tools", "none"] = "workbench"
+
+    required_mcp_keys: List[str] = [
+        "MCP_SERVER_SEQUENTIALTHINKING",
+    ]
+    tools: List[Any] = []
+
+    model_client_stream: bool = True
+
+    reflect_on_tool_use: bool = False
+
+    max_tool_iterations: int = 10
+
+    tool_call_summary_format: str = "{tool_name}: {arguments} -> {result}"
+
+    metadata: Optional[Dict[str, str]] = None
