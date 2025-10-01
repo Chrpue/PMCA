@@ -6,6 +6,8 @@ from redis import asyncio as aioredis
 
 from base.configs import PMCASystemEnvConfig
 from core.client.llm_factory import LLMFactory
+from core.tools.factory.tool_registry import PMCAToolRegistry
+from core.tools.memory.mem0.provider import PMCAMem0ToolsProvider
 
 if TYPE_CHECKING:
     from core.assistant.factory import PMCAAssistantFactory
@@ -50,8 +52,8 @@ class PMCARuntime:
             self.llm_factory = LLMFactory()
 
             await self._initialize_assistants_registry()
-
             await self._initialize_assistants_memories()
+            await self._initialize_tools_provider()
 
             self._initialized = True
             logger.success("PMCARuntime initialized.")
@@ -62,6 +64,11 @@ class PMCARuntime:
 
         registered_agents = PMCAAssistantFactory.all_registered_assistants().keys()
         logger.info(f"当前已注册的智能体: {list(registered_agents)}")
+
+    async def _initialize_tools_provider(self) -> None:
+        registry = PMCAToolRegistry()
+        mem0_tools_provider = PMCAMem0ToolsProvider()
+        registry.register_for_assistant("PMCAMasterOfMemory", mem0_tools_provider)
 
     async def _initialize_assistants_registry(self) -> None:
         """读取 AgentFactory 注册表并缓存。"""

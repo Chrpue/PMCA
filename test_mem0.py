@@ -12,13 +12,9 @@ async def test_mem0():
     # runtime = PMCARuntime()
     # await runtime.initialize()
 
-    # agent_name = "pmca_triage_reviewer"
-    # mem = PMCAMem0LocalService.memory(agent_name)
-    # logger.info(mem._client.config)
+    agent_name = "PMCATriageReviewer"
+    mem = PMCAMem0LocalService.memory(agent_name)
 
-    # 1.初始化记忆部分完全一样
-    mem = Mem0Memory(user_id="diag", is_cloud=False, config=PMCAMem0LocalConfig)
-    #
     # 2.之前添加记忆（无法落库的代码）
     content1 = MemoryContent(
         content="通常情况下，当用户要给某一个智能体实现知识蒸馏等工作的时候，他的意思是使用已经存入lightrag中的知识，丛总根据不同的场景、话题等，提炼出核心精华作为智能体的原始记忆，这样能让智能体在行动之前总是先检索自己的记忆然后做出后续行动。",
