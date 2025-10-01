@@ -4,6 +4,7 @@ class PMCAMem0OpsPolicy:
     """
 
     CONTRACT_SCOPE: str = "target"
+    ALLOW_AUTO_CREATE: bool = False
     DEFAULT_ADD_INFER: bool = True  # 抽取失败是否不落库（更干净）
     MAX_LIST_BATCH: int = 1000
     HTTP_TIMEOUT_S: int = 8

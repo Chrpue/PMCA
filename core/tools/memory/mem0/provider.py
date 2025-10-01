@@ -15,7 +15,6 @@ from .policy import PMCAMem0OpsPolicy
 from core.tools.factory import PMCAToolProvider
 
 try:
-    # 纯规则校验（本地，零推理）
     import jsonschema
     from .contract import CONTRACT_OF_MASTEROFMEMORY
 except Exception:
@@ -226,6 +225,22 @@ class PMCAMem0ToolsProvider(PMCAToolProvider):
             for k in allowed_fields:
                 if k in md:
                     data[k] = md[k]
+
+            # === 预归一：先把 type/subject 变成契约能接受的形态，再进 JSON Schema ===
+            # a) type：中文/别名 -> 英文枚举（observation|rule|procedure|faq|note）
+            if "type" in data and isinstance(data["type"], str):
+                t = self._nfkc(data["type"])
+                type_vocab = vocab.get("type") or {}
+                aliases = type_vocab.get("aliases") or {}
+                if t in aliases:
+                    data["type"] = aliases[t]
+
+            # b) subject：若是 str 则包成 list；若缺失则兜底为 ["general"]（通用、无领域绑定）
+            if "subject" not in data or not data.get("subject"):
+                data["subject"] = ["general"]
+            elif isinstance(data["subject"], str):
+                data["subject"] = [data["subject"]]
+
             if jsonschema is not None:
                 try:
                     jsonschema.validate(
@@ -247,23 +262,50 @@ class PMCAMem0ToolsProvider(PMCAToolProvider):
             if s in aliases:
                 s = aliases[s]
             allowed = set(v.get("allowed") or [])
-            if allowed:
-                if s not in allowed:
-                    # 不在允许集合，回退为“其他”
-                    return "其他"
+            if allowed and s not in allowed:
+                # 不在允许集合，回退为“其他”
+                raise ValueError(f"{field} 值不在允许集合: {s}")
             return s
 
-        result = {}
+        # subject: 将每个条目做 slug 化（小写 + 仅保留 a-z0-9_-），并应用别名映射
+        def _slugify_tag(x: str) -> str:
+            import re
+
+            s = self._nfkc(x).lower()
+            s = re.sub(r"[^a-z0-9_-]", "-", s)
+            s = re.sub(r"-{2,}", "-", s).strip("-")
+            return s[:63] if s else s
+
+        result: Dict[str, Any] = {}
         for k, v in data.items():
-            if k in ("business", "type", "source"):
-                result[k] = _canon_field(k, v)
+            if k == "type":
+                try:
+                    result[k] = _canon_field("type", v)
+                except ValueError as ve:
+                    return (None, f"metadata 不符合 schema: {ve}", infer_override)
+            elif k == "subject":
+                arr = v if isinstance(v, list) else [v]
+                canon = []
+                subj_aliases = (vocab.get("subject") or {}).get("aliases") or {}
+                for item in arr:
+                    item_s = self._nfkc(str(item))
+                    if item_s in subj_aliases:
+                        item_s = subj_aliases[item_s]
+                    canon.append(_slugify_tag(item_s))
+                # 去重并去空
+                result[k] = [t for i, t in enumerate(canon) if t and t not in canon[:i]]
             else:
-                # 未在 schema 的字段不会进入 data；其余字段保守转字符串
+                # 其他字段（title/source_uri/wasGeneratedBy/wasAttributedTo/labels.*）做 NFKC
                 result[k] = self._nfkc(str(v))
 
-        # 3) 必填检查（如果不用 jsonschema 时）
-        if not result.get("business") or not result.get("type"):
-            return (None, "metadata 缺少必填字段 business/type", infer_override)
+        if not result.get("type") or not (
+            isinstance(result.get("subject"), list) and result["subject"]
+        ):
+            return (
+                None,
+                "metadata 缺少必填字段 type/subject 或 subject 非法",
+                infer_override,
+            )
 
         return (result, None, infer_override)
 
@@ -353,6 +395,9 @@ class PMCAMem0ToolsProvider(PMCAToolProvider):
             cfg.setdefault("vector_store", {}).setdefault("config", {}).update(
                 collection_name=collection_name
             )
+
+            if create_if_missing and not PMCAMem0OpsPolicy.ALLOW_AUTO_CREATE:
+                raise RuntimeError(f"全局已禁用自动创建集合：{collection_name}")
 
             if check_exists and not cls._qdrant_collection_exists(collection_name, cfg):
                 if create_if_missing:
@@ -970,9 +1015,11 @@ class PMCAMem0ToolsProvider(PMCAToolProvider):
                         if f in existing:
                             continue
                         # 简化策略：字符串字段用 keyword；如果是 run_id 这类标识也适合 keyword
+                        field_schema = "text" if f == "title" else "keyword"
                         self._qdrant_create_payload_index(
-                            collection, f, "keyword", cfg
-                        )  # 官方 API :contentReference[oaicite:7]{index=7}
+                            collection, f, field_schema, cfg
+                        )
+
                 return {"ok": True, "collection": collection, "indexed": index_fields}
             except Exception as e:
                 logger.exception("provision_assistant failed")
