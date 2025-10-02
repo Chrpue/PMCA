@@ -24,9 +24,27 @@ async def main():
     # registry.register_for_assistant("PMCAMasterOfMemory", mem0_tools_provider)
 
     master_of_memory = task_ctx.assistant_factory.create_assistant("PMCAMasterOfMemory")
+    knowledge_strategist = task_ctx.assistant_factory.create_assistant(
+        "PMCAKnowledgeStrategist"
+    )
+    knowledge_librarian = task_ctx.assistant_factory.create_assistant(
+        "PMCAKnowledgeLibrarian"
+    )
+    knowledge_technician = task_ctx.assistant_factory.create_assistant(
+        "PMCAKnowledgeTechnician"
+    )
+
     user_proxy = UserProxyAgent("user_proxy", input_func=input)
 
-    team = RoundRobinGroupChat([user_proxy, master_of_memory])
+    team = RoundRobinGroupChat(
+        [
+            user_proxy,
+            knowledge_strategist,
+            knowledge_librarian,
+            knowledge_technician,
+            master_of_memory,
+        ]
+    )
 
     await Console(team.run_stream(task=""))
 

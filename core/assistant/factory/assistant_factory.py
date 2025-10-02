@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Type, Dict, List, Optional
 from autogen_agentchat.agents import AssistantAgent
-from autogen_core.tools import BaseTool, FunctionTool, Workbench
+from autogen_core.tools import BaseTool, Workbench
 from autogen_ext.tools.mcp import McpWorkbench
 from loguru import logger
 
@@ -41,27 +41,6 @@ class PMCAAssistantFactory:
             return meta_cls
 
         return decorator
-
-    # @classmethod
-    # def register(
-    #     cls, biz_type: str, meta_cls: Optional[Type[PMCAAssistantMetadata]] = None
-    # ):
-    #     """
-    #     注册一个智能体元数据蓝图。
-    #     这个方法既可以作为装饰器使用，也可以直接调用。
-    #     """
-    #     if meta_cls is None:
-    #         # 作为装饰器使用: @PMCAAssistantFactory.register("MyAgent")
-    #         def decorator(meta_cls_decorated: Type[PMCAAssistantMetadata]):
-    #             cls._registry[biz_type] = meta_cls_decorated
-    #             logger.debug(f"智能体 '{biz_type}' 已通过装饰器注册。")
-    #             return meta_cls_decorated
-    #
-    #         return decorator
-    #     else:
-    #         # 直接调用: PMCAAssistantFactory.register("MyAgent", MyAgentMetadata)
-    #         cls._registry[biz_type] = meta_cls
-    #         logger.debug(f"智能体 '{biz_type}' 已通过直接调用注册。")
 
     @classmethod
     def all_registered_assistants(cls) -> Dict[str, PMCAAssistantMetadata]:

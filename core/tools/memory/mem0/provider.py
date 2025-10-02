@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import copy
 import threading
 import unicodedata
@@ -23,8 +24,6 @@ except Exception:
 
 
 def _snake(name: str) -> str:
-    import re
-
     s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", name)
     return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
@@ -514,7 +513,7 @@ class PMCAMem0ToolsProvider(PMCAToolProvider):
                 return self._add_unified(
                     m,
                     content=content,
-                    user_id=assistant_name,
+                    user_id=_snake(assistant_name),
                     agent_id=assistant_name,
                     run_id=run_id,
                     metadata=metadata,
@@ -573,7 +572,7 @@ class PMCAMem0ToolsProvider(PMCAToolProvider):
                     flt["agent_id"] = assistant_name
                 res = m.search(
                     query,
-                    user_id=assistant_name,
+                    user_id=_snake(assistant_name),
                     limit=limit,
                     threshold=threshold,
                     filters=flt,
@@ -719,7 +718,7 @@ class PMCAMem0ToolsProvider(PMCAToolProvider):
             """
             try:
                 m, _ = _self_mem()
-                res = m.get_all(user_id=assistant_name)
+                res = m.get_all(user_id=_snake(assistant_name))
                 items: List[Dict[str, Any]] = []
                 for r in self._normalize_results(res):
                     items.append(
@@ -765,7 +764,7 @@ class PMCAMem0ToolsProvider(PMCAToolProvider):
                 m, _ = _self_mem()
                 agent = assistant_name if only_written_by_me else None
                 return self._delete_by_scope(
-                    m, user_id=assistant_name, agent_id=agent, run_id=run_id
+                    m, user_id=_snake(assistant_name), agent_id=agent, run_id=run_id
                 )
             except Exception as e:
                 logger.exception("delete_all_memories_for_self failed")
@@ -785,12 +784,12 @@ class PMCAMem0ToolsProvider(PMCAToolProvider):
             """
             try:
                 m, collection = _self_mem()
-                res = m.get_all(user_id=assistant_name)
+                res = m.get_all(user_id=_snake(assistant_name))
                 cnt = len(self._normalize_results(res))
                 return {
                     "ok": True,
                     "stats": {
-                        "assistant_name": assistant_name,
+                        "assistant_name": _snake(assistant_name),
                         "collection": collection,
                         "total_memories": cnt,
                     },
@@ -824,7 +823,7 @@ class PMCAMem0ToolsProvider(PMCAToolProvider):
                 return self._add_unified(
                     m,
                     content=content,
-                    user_id=target_assistant,
+                    user_id=_snake(target_assistant),
                     agent_id=assistant_name,
                     run_id=run_id,
                     metadata=metadata,
@@ -864,7 +863,7 @@ class PMCAMem0ToolsProvider(PMCAToolProvider):
                     flt["agent_id"] = assistant_name
                 res = m.search(
                     query,
-                    user_id=target_assistant,
+                    user_id=_snake(target_assistant),
                     limit=limit,
                     threshold=threshold,
                     filters=flt,
@@ -972,7 +971,7 @@ class PMCAMem0ToolsProvider(PMCAToolProvider):
                 )
                 return self._delete_by_scope(
                     m,
-                    user_id=target_assistant,
+                    user_id=_snake(target_assistant),
                     agent_id=agent,
                     run_id=run_id,
                     extra_filters=filters,
