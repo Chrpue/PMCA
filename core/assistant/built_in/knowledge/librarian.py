@@ -54,6 +54,7 @@ class PMCAKnowledgeLibrarian(PMCAAssistantMetadata):
 
 # [终极目标]
 你的目标是成为一个可靠、智能且高效的知识中枢。请充分利用你的能力和准则，开始你的工作。
+只做好本职工作，完成任务后请交接工作。
 """
 
     chinese_name: str = "知识馆长"

@@ -59,6 +59,9 @@ class PMCAKnowledgeStrategist(PMCAAssistantMetadata):
     "收集关于'任务分诊'的常见问题（FAQ）和最佳实践。"
   ]
 }}
+
+# [终极目标]
+只做好本职工作，完成任务后请交接工作。
 """
 
     chinese_name: str = "知识策略大师"

@@ -74,8 +74,8 @@ class PMCAComplexTaskTeam(PMCATeamFactory):
     def _build_team(self) -> Team:
         return SelectorGroupChat(
             self._participants,
-            name="PMCA-RoundRobin-Triage",
-            description="用户任务分诊器：根据用户任务描述决策任务的类型并提供团队初始化信息。",
+            name="PMCA-SELECTOR-GROUP-CHAT",
+            description="根据用户任务和分诊结果完成复杂任务。",
             selector_prompt=PMCACOMPLEXTASK_SELECTORGROUP_SYSTEM_MESSAGE,
             allow_repeated_speaker=True,
             termination_condition=self._termination,

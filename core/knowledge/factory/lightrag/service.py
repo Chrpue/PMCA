@@ -86,7 +86,7 @@ class PMCALightRAGClient:
 
         try:
             response = requests.get(
-                endpoint, headers=headers, params=params, timeout=60
+                endpoint, headers=headers, params=params, timeout=3000
             )
             response.raise_for_status()
             return response.json()
@@ -147,7 +147,7 @@ class PMCALightRAGClient:
 
         try:
             response = requests.post(
-                query_endpoint, headers=headers, json=payload, timeout=300
+                query_endpoint, headers=headers, json=payload, timeout=3000
             )
             response.raise_for_status()
             query_result = response.json()

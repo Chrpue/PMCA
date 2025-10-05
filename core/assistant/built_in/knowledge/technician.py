@@ -47,6 +47,9 @@ class PMCAKnowledgeTechnician(PMCAAssistantMetadata):
 1. 内容检查: 每一条 content 是否都是一个独立的、可核验的知识点？是否与输入材料完全一致？
 2. 结构检查: type 字段是否只使用了约定的五个值？subject 是不是一个数组？title 是否可选且不超过长度限制？
 3. 纯净度检查: 我最终的输出是否只有 JSON 数组，没有任何多余的文字？
+
+# [终极目标]
+只做好本职工作，完成任务后请交接工作。
 """
 
     chinese_name: str = "知识蒸馏大师"

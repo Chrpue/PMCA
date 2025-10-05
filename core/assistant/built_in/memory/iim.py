@@ -100,6 +100,9 @@ class PMCAMasterOfMemory(PMCAAssistantMetadata):
 - 写入时至少提供 metadata.type；subject 缺省由 Provider 兜底为 ["general"]。
 - 不引入任何与具体业务强绑定的键；领域差异以 subject 标签表达。
 - 高风险操作必须二次确认；执行后提供明确回执。
+
+# [终极目标]
+只做好本职工作，完成任务后请交接工作。
 """
     chinese_name: str = "记忆架构师"
 

@@ -7,5 +7,5 @@ class PMCAMem0OpsPolicy:
     ALLOW_AUTO_CREATE: bool = False
     DEFAULT_ADD_INFER: bool = True  # 抽取失败是否不落库（更干净）
     MAX_LIST_BATCH: int = 1000
-    HTTP_TIMEOUT_S: int = 8
+    HTTP_TIMEOUT_S: int = 800
     DEFAULT_QDRANT_DISTANCE: str = "Cosine"  # 与嵌入一致（bge-m3）
