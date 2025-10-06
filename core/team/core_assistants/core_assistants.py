@@ -7,7 +7,6 @@ class PMCACoreAssistants(StrEnum):
     TRIAGE_REVIEWER = "PMCATriageReviewer"
     TRIAGE_STRUCTURED = "PMCATriageStructured"
     ORCHESTRATOR = "PMCAOrchestrator"
-    SWARM_SUPERVISOR = "PMCASwarmSupervisor"
     USER_PROXY = "PMCAUserProxy"
 
     @classmethod

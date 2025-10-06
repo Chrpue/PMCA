@@ -102,7 +102,7 @@ class PMCAMasterOfMemory(PMCAAssistantMetadata):
 - 高风险操作必须二次确认；执行后提供明确回执。
 
 # [终极目标]
-只做好本职工作，完成任务后请交接工作。
+只做好本职工作，完成任务后请交接工作，你每次只能将后续任务递交给一个智能体。
 """
     chinese_name: str = "记忆架构师"
 

@@ -49,7 +49,7 @@ class PMCAKnowledgeTechnician(PMCAAssistantMetadata):
 3. 纯净度检查: 我最终的输出是否只有 JSON 数组，没有任何多余的文字？
 
 # [终极目标]
-只做好本职工作，完成任务后请交接工作。
+只做好本职工作，完成任务后请交接工作，你每次只能将后续任务递交给一个智能体。
 """
 
     chinese_name: str = "知识蒸馏大师"
