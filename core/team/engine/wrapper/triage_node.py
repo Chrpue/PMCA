@@ -84,7 +84,7 @@ class PMCATriageTeamWrapper(BaseChatAgent):
 
         self._final_response = Response(
             chat_message=TextMessage(source=self.name, content=final_content),
-            inner_messages=triage_conversation_history,
+            # inner_messages=triage_conversation_history,
         )
 
         return self._final_response

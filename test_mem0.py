@@ -17,39 +17,39 @@ async def test_mem0():
 
     # 2.之前添加记忆（无法落库的代码）
     content1 = MemoryContent(
-        content="通常情况下，当用户要给某一个智能体实现知识蒸馏等工作的时候，他的意思是使用已经存入lightrag中的知识，丛总根据不同的场景、话题等，提炼出核心精华作为智能体的原始记忆，这样能让智能体在行动之前总是先检索自己的记忆然后做出后续行动。",
+        content="使用知识馆长(PMCAKnowledgeLibrarian)负责检索PMCATriageReviewer的相关知识，知识蒸馏大师(PMCAKnowledgeTechnician)负责对检索出的信息进行深度分析和提炼，记忆架构师(PMCAMasterOfMemory)负责将核心要点写入PMCATriageReviewer的记忆库",
         # content="我是一个AI架构师",
         mime_type=MemoryMimeType.TEXT,
         metadata={"purpose": "connectivity_test"},
     )
     await mem.add(content1)
 
-    content2 = MemoryContent(
-        content="PMCAKnowledgeLibrarian是主要负责对接LightRAG系统的智能体，它能使用较为完备的API直接使用LightRAG。",
-        #         content="""
-        # 南方的秋雨，黏黏腻腻地缠着黄昏。为了躲雨，也想甩掉些心事，阿文拐进了上海一条老弄堂里的小书店。店里很安静，只有旧书页和淡淡霉味混合成的、令人心安的气息。
-        # 他在积满灰尘的书架间慢慢走着，随手抽出一本褪色的散文集。书页翻动间，一张泛黄的明信片掉了出来。照片是杭州西_湖的秋景，断桥残雪，雾气蒙蒙。背面是一行清秀的钢笔字：“愿我们像这湖光山色，岁岁皆安。” 像一句轻声的祝福，不知许给谁，也不知来自何年。
-        # 阿文握着这张小卡片，心里某个角落忽然被照亮了。这份来自陌生旧时光的温柔，让他感到一种奇妙的慰藉。他拿着书结了账，走出店门时，发现笼罩着整个城市的雨幕，似乎也变得柔和了许多。""",
-        mime_type=MemoryMimeType.TEXT,
-        metadata={"purpose": "connectivity_test"},
-    )
-    await mem.add(content2)
-
-    content3 = MemoryContent(
-        content="PMCAKnowledgeTechnician是专门负责知识蒸馏的，比如提取话题中的核心内容、关键字等，还有更为复杂的工具，它是对直接从LightRAG系统中提取出的内容进行针对智能体记忆的二次加工。",
-        mime_type=MemoryMimeType.TEXT,
-    )
-    await mem.add(content3)
-
-    content = MemoryContent(
-        content="PMCAMasterOfMemory是专门负责为智能体写入记忆、查询智能体记忆等相关工作的。",
-        mime_type=MemoryMimeType.TEXT,
-        metadata={"purpose": "connectivity_test"},
-    )
-    await mem.add(content)
-    # 查询并打印结果
-    result = await mem.query("PMCAMasterOfMemory是用来做什么的", limit=5)
-    print(f"Got {len(result.results)} results: {result.results}")
+    # content2 = MemoryContent(
+    #     content="PMCAKnowledgeLibrarian是主要负责对接LightRAG系统的智能体，它能使用较为完备的API直接使用LightRAG。",
+    #     #         content="""
+    #     # 南方的秋雨，黏黏腻腻地缠着黄昏。为了躲雨，也想甩掉些心事，阿文拐进了上海一条老弄堂里的小书店。店里很安静，只有旧书页和淡淡霉味混合成的、令人心安的气息。
+    #     # 他在积满灰尘的书架间慢慢走着，随手抽出一本褪色的散文集。书页翻动间，一张泛黄的明信片掉了出来。照片是杭州西_湖的秋景，断桥残雪，雾气蒙蒙。背面是一行清秀的钢笔字：“愿我们像这湖光山色，岁岁皆安。” 像一句轻声的祝福，不知许给谁，也不知来自何年。
+    #     # 阿文握着这张小卡片，心里某个角落忽然被照亮了。这份来自陌生旧时光的温柔，让他感到一种奇妙的慰藉。他拿着书结了账，走出店门时，发现笼罩着整个城市的雨幕，似乎也变得柔和了许多。""",
+    #     mime_type=MemoryMimeType.TEXT,
+    #     metadata={"purpose": "connectivity_test"},
+    # )
+    # await mem.add(content2)
+    #
+    # content3 = MemoryContent(
+    #     content="PMCAKnowledgeTechnician是专门负责知识蒸馏的，比如提取话题中的核心内容、关键字等，还有更为复杂的工具，它是对直接从LightRAG系统中提取出的内容进行针对智能体记忆的二次加工。",
+    #     mime_type=MemoryMimeType.TEXT,
+    # )
+    # await mem.add(content3)
+    #
+    # content = MemoryContent(
+    #     content="PMCAMasterOfMemory是专门负责为智能体写入记忆、查询智能体记忆等相关工作的。",
+    #     mime_type=MemoryMimeType.TEXT,
+    #     metadata={"purpose": "connectivity_test"},
+    # )
+    # await mem.add(content)
+    # # 查询并打印结果
+    # result = await mem.query("PMCAMasterOfMemory是用来做什么的", limit=5)
+    # print(f"Got {len(result.results)} results: {result.results}")
 
     # 清空内存
     # await mem.clear()

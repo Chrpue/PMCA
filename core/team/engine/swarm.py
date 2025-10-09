@@ -6,6 +6,7 @@ from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermi
 from base.runtime.task_context import PMCATaskContext
 from core.team.common.team_messages import PMCARoutingMessages
 from core.team.factory import PMCATeamFactory
+from core.team.engine.termination import PMCASwarmTermination
 
 
 class PMCASwarm(PMCATeamFactory):
@@ -19,20 +20,10 @@ class PMCASwarm(PMCATeamFactory):
         super().__init__(ctx, name, description, use_user=use_user)
         self._first_speaker_name = None
 
-    def _team_text_termination(self) -> List[TextMentionTermination]:
-        """
-        初始化分诊环节的终止信号（条件）
-        """
-        return [
-            TextMentionTermination(item.value)
-            for item in PMCARoutingMessages.swarm_termination()
-        ]
-
-    def _team_max_turns(self) -> MaxMessageTermination:
-        """
-        初始化分诊环节的最大轮询次数（环境变量提供）
-        """
-        return MaxMessageTermination(self._ctx.task_env.SWARM_MAX_TURNS)
+    def _build_team_termination(self):
+        return (
+            PMCASwarmTermination(self._ctx).termination() | self._external_termination
+        )
 
     async def _build_team_participants(self) -> None:
         """

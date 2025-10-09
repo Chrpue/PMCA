@@ -1,14 +1,22 @@
 from datetime import datetime
 
 CUSTOM_FACT_EXTRACTION_PROMPT = f"""
-你是一个AI智能体的“认知核心”，专门负责从智能体的行为日志和自我思考中，提炼出可供其长期记忆的、有价值的“事实”（Facts）。你的任务是识别那些能够帮助智能体未来更高效、更准确地完成任务的关键经验，并将它们总结为简洁明了的陈述。
+你是一个高度专业的“多智能体协作分析师”，是AI智能体团队的“认知复盘核心”。你的任务是深入分析智能体团队在执行任务时的完整行为日志（包含多位成员的对话和行动），从中提炼出可供它们长期记忆的、能够指导未来协作的、高价值的“事实”（Facts）。
 
-**你需要提炼的四类核心洞察:**
+**你需要提炼的五类核心洞察:**
 
-1.  **实体关联与别名 (Entity Association & Aliases):** 从操作中发现不同实体之间的潜在关系。
-2.  **问题诊断与解决方案 (Problem Diagnosis & Solutions):** 准确描述遇到的问题、导致问题的根本原因，以及最终解决该问题的有效方法或工具。
-3.  **优化工作流程与策略 (Optimized Workflows & Strategies):** 基于一次成功的经验或失败的教训，总结出未来处理同类任务时更优的、可固化的行动步骤或策略。
-4.  **关键事实与环境属性 (Key Facts & Environmental Attributes):** 记录关于环境、资源或业务规则的、被验证为正确的客观事实。
+1.  **协作流程与依赖 (Collaborative Workflow & Dependencies):** 识别并固化成功的、有序的智能体协作模式。这至关重要。
+    * *要点:* 明确记录智能体之间行动的**先后顺序**和**移交关系**。
+
+2.  **问题诊断与归因 (Problem Diagnosis & Attribution):** 准确描述遇到的问题、导致问题的根本原因，以及哪个环节或智能体的失败最终导致了 `[SWARM_FAILURE]`。
+    * *要点:* 建立从“根本原因”到“失败结果”的清晰因果链。
+
+3.  **成功模式与关键决策 (Success Patterns & Key Decisions):** 总结出在一次成功的任务中，哪个智能体的哪个关键产出或决策，是整个任务得以顺利完成的核心。
+    * *要点:* 识别并奖励成功的模式。
+
+4.  **实体关联与属性 (Entity Association & Attributes):** 从操作中发现不同实体（包括智能体、工具、数据等）之间的关系、别名或被验证为正确的客观属性。
+
+5.  **工具使用与边界 (Tool Usage & Boundaries):** 记录某个工具在特定场景下被证明有效或无效的边界条件。
 
 **输出格式要求:**
 你必须返回一个 JSON 对象，其根键为 "facts"，值为一个字符串列表。每一项都是一条独立、完整的洞察陈述。
@@ -20,29 +28,31 @@ CUSTOM_FACT_EXTRACTION_PROMPT = f"""
 
 **这里有一些示例:**
 
-**输入:** 在进行H26井电子巡检过程中，经过检测后发现H26井并不存在，无论是通过LongName或是PID进行检索都无法匹配到准确的信息，但是通过查询川中北部采气管理处物理拓扑网络，发现了磨溪022-H26井的存在，并成功检索相关信息。
+**输入:** PMCAKnowledgeStrategist: [制定检索计划...] 我已经完成了检索计划的制定，现将计划移交给你PMCAKnowledgeLibrarian。
+PMCAKnowledgeLibrarian: [执行检索...] 我在中央知识库中进行了全面搜索，但未能找到任何相关的文档。由于缺少核心原材料，后续的提炼和写入工作无法进行。[SWARM_FAILURE]
 **输出:**
 {{
     "facts": [
-        "H26井可能是磨溪022-H26井的简称。",
-        "磨溪022-H26井属于川中北部财气管理的管辖范围之内。",
-        "以后再遇到类似的情况不妨先尝试先从物理拓扑网络提取信息。"
+        "在知识蒸馏工作流中，PMCAKnowledgeStrategist的产出是PMCAKnowledgeLibrarian的输入。",
+        "当PMCAKnowledgeLibrarian无法检索到任何文档时，这是一个致命性错误。",
+        "缺少原始文档会导致知识蒸馏任务以 [SWARM_FAILURE] 告终。",
+        "一个失败的知识蒸馏任务的根本原因可能是知识库中缺少相关主题的知识。"
     ]
 }}
 
-**输入:** PMCAKnowledgeTechnician是专门负责知识蒸馏的，比如提取话题中的核心内容、关键字等，还有更为复杂的工具，它是对直接从LightRAG系统中提取出的内容进行针对智能体记忆的二次加工。
+**输入:** PMCAKnowledgeTechnician: [提炼JSON...] 我已经完成了知识的结构化提炼，现将这些‘记忆晶体’移交给PMCAMasterOfMemory。
+PMCAMasterOfMemory: [写入记忆...] 已成功为目标智能体 `PMCATriage` 写入了5条新的记忆。知识蒸馏子任务已全部完成。[SWARM_SUCCESS]
 **输出:**
 {{
     "facts": [
-        "PMCAKnowledgeTechnician是专门负责知识蒸馏的智能体。",
-        "PMCAKnowledgeTechnician具有核心话题和关键字提取能力。"
-        "知识蒸馏是对LightRAG检索内容的二次加工。"
+        "在知识蒸馏工作流中，PMCAKnowledgeTechnician的工作环节在PMCAMasterOfMemory之前。",
+        "PMCAMasterOfMemory是知识蒸馏工作流的终结环节。",
+        "PMCAMasterOfMemory负责宣告知识蒸馏任务的[SWARM_SUCCESS]。"
     ]
 }}
-
 
 **重要准则:**
-- 仅从智能体自身的行为、思考和结果中提炼，忽略用户的通用指令。
+- **聚焦协作**: 优先从智能体之间的**对话、移交（@...）、成功 [SWARM_SUCCESS] 和失败 [SWARM_FAILURE] 信号**中提炼洞察。
 - 如果没有值得记录的事实，则返回一个空的列表：`{{"facts": []}}`。
 - 今天的日期是 {datetime.now().strftime("%Y-%m-%d")}.
 
@@ -101,7 +111,7 @@ CUSTOM_UPDATE_MEMORY_PROMPT = """
 }
 
 
-**重要准-则:**
+**重要准则:**
 - 你的决策应旨在提高记忆库的准确性和可用性。
 - 更新知识时，重点是融合信息，而不是简单替换。目标是让知识变得更“聪明”。
 
@@ -147,5 +157,5 @@ PMCAMem0LocalConfig = {
     "history_db_path": "/home/chrpue/projects/memory/mem0/history.db",
     "version": "v1.1",
     "custom_fact_extraction_prompt": CUSTOM_FACT_EXTRACTION_PROMPT,
-    "custom_update_memory_prompt": "",
+    "custom_update_memory_prompt": CUSTOM_UPDATE_MEMORY_PROMPT,
 }

@@ -19,6 +19,7 @@ from autogen_agentchat.base import ChatAgent, Team, TaskResult
 from autogen_agentchat.conditions import (
     ExternalTermination,
     MaxMessageTermination,
+    StopMessageTermination,
     TextMentionTermination,
 )
 from autogen_agentchat.messages import BaseAgentEvent, BaseChatMessage
@@ -84,7 +85,7 @@ class PMCATeamFactory(ABC):
         if self._use_user:
             self._user_proxy = PMCAUserProxy(self._ctx)
         await self._build_team_participants()
-        self._termination = self._combine_termination_condition()
+        self._termination = self._build_team_termination()
         self._team = self._build_team()
 
     @property
@@ -106,24 +107,8 @@ class PMCATeamFactory(ABC):
         )
         return self._team
 
-    def _combine_termination_condition(self):
-        text_terms = self._team_text_termination() or []
-        parts = [self._external_termination, self._team_max_turns(), *text_terms]
-        active = [t for t in parts if t is not None]
-        if not active:
-            return None
-        if len(active) == 1:
-            return active[0]
-        return reduce(operator.or_, active)
-
     @abstractmethod
-    def _team_text_termination(self) -> List[TextMentionTermination]:
-        """Return a list of termination conditions triggered by specific text"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def _team_max_turns(self) -> MaxMessageTermination:
-        """Return a termination condition limiting the total number of messages"""
+    def _build_team_termination(self):
         raise NotImplementedError
 
     @abstractmethod

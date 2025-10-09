@@ -12,6 +12,7 @@ from core.team.common.team_messages import PMCARoutingMessages
 from core.team.core_assistants import PMCACoreAssistants
 from core.assistant.factory import PMCAAssistantFactory
 from core.team.factory import PMCATeamFactory
+from core.team.engine.termination import PMCAComplexExecutorTermination
 
 from .swarm import PMCASwarm
 
@@ -22,20 +23,11 @@ class PMCAComplexTaskTeam(PMCATeamFactory):
     ) -> None:
         super().__init__(ctx, name, description, use_user=use_user)
 
-    def _team_text_termination(self) -> List[TextMentionTermination]:
-        """
-        初始化分诊环节的终止信号（条件）
-        """
-        return [
-            TextMentionTermination(item.value)
-            for item in PMCARoutingMessages.complex_executor_termination()
-        ]
-
-    def _team_max_turns(self) -> MaxMessageTermination:
-        """
-        初始化分诊环节的最大轮询次数（环境变量提供）
-        """
-        return MaxMessageTermination(self._ctx.task_env.COMPLEX_EXECUTOR_MAX_TURNS)
+    def _build_team_termination(self):
+        return (
+            PMCAComplexExecutorTermination(self._ctx).termination()  # type: ignore
+            | self._external_termination
+        )
 
     async def _build_team_participants(self) -> None:
         """
@@ -47,8 +39,6 @@ class PMCAComplexTaskTeam(PMCATeamFactory):
         self._participants.append(self._user_proxy)
 
         triage_result = await self._ctx.task_workbench.get_item("triage_result")
-
-        logger.success(f"**1**{self._participants}")
 
         self._participants = []
 
@@ -69,12 +59,10 @@ class PMCAComplexTaskTeam(PMCATeamFactory):
             )
             self._participants.append(swarm_team.team)
 
-        logger.success(f"**2**{self._participants}")
-
     def _build_team(self) -> Team:
         return SelectorGroupChat(
             self._participants,
-            name="PMCA-SELECTOR-GROUP-CHAT",
+            name="PMCA-COMPLEX-TASK-EXECUTOR",
             description="根据用户任务和分诊结果完成复杂任务。",
             selector_prompt=PMCACOMPLEXTASK_SELECTORGROUP_SYSTEM_MESSAGE,
             allow_repeated_speaker=True,

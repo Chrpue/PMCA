@@ -6,6 +6,7 @@ from base.runtime.task_context import PMCATaskContext
 from core.team.common.team_messages import PMCARoutingMessages
 from core.team.core_assistants import PMCACoreAssistants
 from core.team.factory import PMCATeamFactory
+from core.team.engine.termination import PMCATriageTermination
 
 
 class PMCATriageTeam(PMCATeamFactory):
@@ -18,20 +19,10 @@ class PMCATriageTeam(PMCATeamFactory):
     ) -> None:
         super().__init__(ctx, name, description, use_user=use_user)
 
-    def _team_text_termination(self) -> List[TextMentionTermination]:
-        """
-        初始化分诊环节的终止信号（条件）
-        """
-        return [
-            TextMentionTermination(item.value)
-            for item in PMCARoutingMessages.triage_termination()
-        ]
-
-    def _team_max_turns(self) -> MaxMessageTermination:
-        """
-        初始化分诊环节的最大轮询次数（环境变量提供）
-        """
-        return MaxMessageTermination(self._ctx.task_env.TRIAGE_MAX_TURNS)
+    def _build_team_termination(self):
+        return (
+            PMCATriageTermination(self._ctx).termination() | self._external_termination  # type: ignore
+        )
 
     async def _build_team_participants(self) -> None:
         """

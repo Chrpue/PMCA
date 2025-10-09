@@ -72,7 +72,7 @@ class PMCAKnowledgeLibrarian(PMCAAssistantMetadata):
 
     model_client_stream: bool = True
 
-    reflect_on_tool_use: bool = False
+    reflect_on_tool_use: bool = True
 
     max_tool_iterations: int = 10
 
