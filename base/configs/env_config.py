@@ -62,6 +62,8 @@ class PMCAEnvConfig(BaseSettings):
 
     # Mcp-Server Infos
     MCP_TIMEOUT: int
+    FUNCTIONAL_MCP_SERVER: str
+
     MCP_SERVER_EXCEL: str
     MCP_SERVER_FILESYSTEM: str
     MCP_SERVER_SEQUENTIALTHINKING: str
@@ -85,6 +87,21 @@ class PMCAEnvConfig(BaseSettings):
 
     def get_mcp_servers(self) -> Dict[str, SseServerParams]:
         prefix = "MCP_SERVER_"
+        servers = {}
+
+        for field_name in self.__class__.model_fields:
+            if field_name.startswith(prefix):
+                url = getattr(self, field_name)
+                if not url:
+                    continue
+                servers[field_name] = SseServerParams(
+                    url=url,
+                    timeout=float(self.MCP_TIMEOUT),
+                )
+        return servers
+
+    def get_functional_servers(self) -> Dict[str, SseServerParams]:
+        prefix = "FUNCTIONAL_MCP_SERVER"
         servers = {}
 
         for field_name in self.__class__.model_fields:

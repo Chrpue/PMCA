@@ -7,6 +7,7 @@ from autogen_ext.tools.mcp import McpWorkbench
 from loguru import logger
 
 from core.client.llm_factory import ProviderType
+from core.tools.common import merge_control_workbench
 from .assistant_config import PMCAAssistantMetadata
 
 
@@ -74,12 +75,12 @@ class PMCAAssistantFactory:
         assistant_name = meta.name or biz_type
 
         if meta.tools_type == "workbench":
+            workbenches: List[Workbench] = []
             if not meta.required_mcp_keys:
                 logger.warning(
                     f"[{assistant_name}] tools_type=workbench 但未配置 required_mcp_keys"
                 )
                 return {}
-            workbenches: List[Workbench] = []
             mcp_servers = self.ctx.task_env.get_mcp_servers()
 
             missing = []
@@ -91,7 +92,11 @@ class PMCAAssistantFactory:
                 workbenches.append(McpWorkbench(server_params=mcp_servers[key]))
             if missing:
                 logger.warning(f"[{assistant_name}] 缺失 MCP server keys: {missing}")
-            return {"workbench": workbenches} if workbenches else {}
+
+            params = {"workbench": workbenches} if workbenches else {"workbench": []}
+            params = merge_control_workbench(self.ctx, assistant_name, params)
+
+            return params if params.get("workbench") else {}
 
         elif meta.tools_type == "tools":
             tools: List[BaseTool] = PMCAToolFactory.tools(assistant_name)
