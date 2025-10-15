@@ -38,7 +38,6 @@ class PMCARuntime:
             if getattr(self, "_initialized", False):
                 return
 
-            # 1) 连接 Redis（异步）
             self.redis = aioredis.Redis(
                 host=PMCASystemEnvConfig.REDIS_HOST,
                 port=PMCASystemEnvConfig.REDIS_PORT,

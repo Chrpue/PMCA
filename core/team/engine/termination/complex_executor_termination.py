@@ -1,7 +1,8 @@
 import operator
-from typing import Sequence
+from typing import Sequence, Optional, Tuple
 from functools import reduce
 
+from autogen_agentchat.base import TerminationCondition
 from autogen_agentchat.conditions import (
     ExternalTermination,
     FunctionalTermination,
@@ -31,7 +32,7 @@ class PMCAComplexExecutorTermination:
 
     def termination(self):
         max_turns_termination = MaxMessageTermination(
-            self._ctx.task_env.TRIAGE_MAX_TURNS
+            self._ctx.task_env.COMPLEX_EXECUTOR_MAX_TURNS
         )
 
         text_mention_termination = [

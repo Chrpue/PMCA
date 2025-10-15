@@ -11,10 +11,15 @@ mcp = FastMCP("pmca-control-bus")
 
 
 @mcp.tool
-async def pmca_emit_status(
+async def report_status(
     caller: str,
     task_id: str,
-    status: Literal["OK", "RETRY", "NEED_USER", "IRRECOVERABLE"],
+    status: Literal[
+        "[ASSISTANT:OK]",
+        "[ASSISTANT:RETRY]",
+        "[ASSISTANT:NEEDUSER]",
+        "[ASSISTANT:IRRECOVERABLE]",
+    ],
     detail: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     evt = {
@@ -30,10 +35,10 @@ async def pmca_emit_status(
 
 
 @mcp.tool
-async def pmca_emit_final(
+async def report_final(
     caller: str,
     task_id: str,
-    reason: Literal["SUCCESS", "FAIL", "CANCEL"],
+    reason: Literal["[EXECUTE_SUCCESS]", "[EXECUTE_FAILURE]", "[EXECUTE_CANCEL]"],
     summary: Optional[str] = None,
 ) -> Dict[str, Any]:
     evt = {
@@ -47,22 +52,6 @@ async def pmca_emit_final(
     for q in list(_subscribers):
         await q.put(evt)
     return {"ok": True, "event": evt}
-
-
-@mcp.tool
-async def pmca_subscribe_once(timeout_s: int = 30) -> Dict[str, Any]:
-    q: asyncio.Queue = asyncio.Queue(maxsize=1)
-    _subscribers.append(q)
-    try:
-        evt = await asyncio.wait_for(q.get(), timeout=timeout_s)
-        return {"ok": True, "event": evt}
-    except asyncio.TimeoutError:
-        return {"ok": False, "error": "timeout"}
-    finally:
-        try:
-            _subscribers.remove(q)
-        except ValueError:
-            pass
 
 
 app = mcp.http_app()

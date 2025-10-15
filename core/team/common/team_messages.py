@@ -29,6 +29,17 @@ class PMCARoutingMessages(StrEnum):
     SWARM_SUCCESS = "[SWARM_SUCCESS]"
     SWARM_FAILURE = "[SWARM_FAILURE]"
 
+    # --- Assistant 汇报结果 ---
+    ASSISTANT_OK = "[ASSISTANT:OK]"
+    ASSISTANT_RETRY = "[ASSISTANT:RETRY]"
+    ASSISTANT_NEEDUSER = "[ASSISTANT:NEEDUSER]"
+    ASSISTANT_IRRECOVERABLE = "[ASSISTANT:IRRECOVERABLE]"
+
+    # --- Assistant 终止信息 ---
+    ASSISTANT_EXECUTE_SUCCESS = "[EXECUTE_SUCCESS]"
+    ASSISTANT_EXECUTE_FAILURE = "[EXECUTE_FAILURE]"
+    ASSISTANT_EXECUTE_CANCEL = "[EXECUTE_CANCEL]"
+
     @classmethod
     def user_termination(cls):
         return [item for item in cls if item.name.startswith("SIGNAL_")]

@@ -6,8 +6,7 @@ from autogen_core.tools import BaseTool, Workbench
 from autogen_ext.tools.mcp import McpWorkbench
 from loguru import logger
 
-from core.client.llm_factory import ProviderType
-from core.tools.common import merge_control_workbench
+from core.tools.common import merge_functional_workbenches
 from .assistant_config import PMCAAssistantMetadata
 
 
@@ -94,7 +93,7 @@ class PMCAAssistantFactory:
                 logger.warning(f"[{assistant_name}] 缺失 MCP server keys: {missing}")
 
             params = {"workbench": workbenches} if workbenches else {"workbench": []}
-            params = merge_control_workbench(self.ctx, assistant_name, params)
+            params = merge_functional_workbenches(self.ctx, assistant_name, params)
 
             return params if params.get("workbench") else {}
 

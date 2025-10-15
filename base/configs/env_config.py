@@ -1,5 +1,11 @@
 from typing import Dict, Literal
-from autogen_ext.tools.mcp import SseServerParams
+from urllib.parse import urlparse, parse_qs, urlunparse
+from autogen_ext.tools.mcp import (
+    McpServerParams,
+    SseServerParams,
+    StdioServerParams,
+    StreamableHttpServerParams,
+)
 from loguru import logger
 from dotenv import load_dotenv
 from pydantic import Field
@@ -64,6 +70,8 @@ class PMCAEnvConfig(BaseSettings):
     MCP_TIMEOUT: int
     FUNCTIONAL_MCP_SERVER: str
 
+    MCP_SERVER_REDIS: str
+
     MCP_SERVER_EXCEL: str
     MCP_SERVER_FILESYSTEM: str
     MCP_SERVER_SEQUENTIALTHINKING: str
@@ -85,34 +93,84 @@ class PMCAEnvConfig(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    def get_mcp_servers(self) -> Dict[str, SseServerParams]:
+    def _to_mcp_params(self, url: str, timeout: float) -> McpServerParams | None:
+        if not url:
+            return None
+        raw = url.strip()
+        parsed = urlparse(raw)
+        path = (parsed.path or "").rstrip("/")
+
+        # 1) 显式 SSE：path 以 /sse 结尾（query 无影响）
+        if path.endswith("/sse"):
+            return SseServerParams(url=raw, timeout=timeout)
+
+        # 2) 显式 STDIO：path 以 /stdio 结尾（query 携带 docker 参数）
+        if path.endswith("/stdio"):
+            qs = parse_qs(parsed.query)
+
+            image = (qs.get("image", ["mcp/redis:latest"])[0]).strip()
+            network = (qs.get("network", [""])[0]).strip()
+            addhosts = [
+                h for h in qs.get("addhost", []) if h.strip()
+            ]  # e.g. host.docker.internal:host-gateway
+            env_list = [e for e in qs.get("env", []) if e.strip()]
+
+            # 批量注入：ENV_PREFIX=REDIS_MCP_  => 把配置里以该前缀的项转换为 -e KEY=VALUE
+            env_prefix = (qs.get("ENV_PREFIX", [""])[0]).strip()
+            if env_prefix:
+                for k, v in self.model_dump().items():
+                    if (
+                        isinstance(k, str)
+                        and k.startswith(env_prefix)
+                        and v not in (None, "")
+                    ):
+                        key = k[len(env_prefix) :]
+                        env_list.append(f"{key}={v}")
+
+            args = ["run", "--rm", "-i"]
+            if network:
+                args += ["--network", network]
+            for ah in addhosts:
+                args += ["--add-host", ah]
+            for kv in env_list:
+                args += ["-e", kv]
+            args += [image]
+
+            return StdioServerParams(
+                command="docker", args=args, read_timeout_seconds=timeout
+            )
+
+        # 3) 其余：按 Streamable HTTP 处理，规范化为以 /mcp/ 结尾
+        norm_path = path
+        if not norm_path.endswith("/mcp"):
+            norm_path = norm_path + "/mcp"
+        if not norm_path.endswith("/"):
+            norm_path = norm_path + "/"
+        normalized = parsed._replace(path=norm_path)  # 保留原 query/fragment
+        return StreamableHttpServerParams(url=urlunparse(normalized), timeout=timeout)
+
+    def get_mcp_servers(self) -> Dict[str, McpServerParams]:
         prefix = "MCP_SERVER_"
-        servers = {}
+        servers: Dict[str, McpServerParams] = {}
 
         for field_name in self.__class__.model_fields:
-            if field_name.startswith(prefix):
-                url = getattr(self, field_name)
-                if not url:
-                    continue
-                servers[field_name] = SseServerParams(
-                    url=url,
-                    timeout=float(self.MCP_TIMEOUT),
-                )
+            if not field_name.startswith(prefix):
+                continue
+            url = getattr(self, field_name)
+            if not url:
+                continue
+            params = self._to_mcp_params(url, float(self.MCP_TIMEOUT))
+            if params:
+                servers[field_name] = params
         return servers
 
-    def get_functional_servers(self) -> Dict[str, SseServerParams]:
-        prefix = "FUNCTIONAL_MCP_SERVER"
-        servers = {}
-
-        for field_name in self.__class__.model_fields:
-            if field_name.startswith(prefix):
-                url = getattr(self, field_name)
-                if not url:
-                    continue
-                servers[field_name] = SseServerParams(
-                    url=url,
-                    timeout=float(self.MCP_TIMEOUT),
-                )
+    def get_functional_servers(self) -> dict[str, McpServerParams]:
+        servers: Dict[str, McpServerParams] = {}
+        url = getattr(self, "FUNCTIONAL_MCP_SERVER", None)
+        if url:
+            params = self._to_mcp_params(url, float(self.MCP_TIMEOUT))
+            if params:
+                servers["FUNCTIONAL_MCP_SERVER"] = params
         return servers
 
 

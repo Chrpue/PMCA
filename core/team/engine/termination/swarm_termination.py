@@ -1,5 +1,6 @@
-from typing import Sequence
+from typing import Sequence, Optional, Any, Dict
 
+from autogen_agentchat.base import TerminationCondition
 from autogen_agentchat.conditions import (
     ExternalTermination,
     FunctionalTermination,
