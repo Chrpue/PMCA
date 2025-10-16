@@ -15,6 +15,8 @@ from core.team.factory import PMCATeamFactory
 from core.team.engine.termination import PMCAComplexExecutorTermination
 
 from .swarm import PMCASwarm
+from .wrapper.swarm_node import PMCASwarmWrapper
+from utils.somehandler import swarm_name_to_snake
 
 
 class PMCAComplexTaskTeam(PMCATeamFactory):
@@ -54,10 +56,19 @@ class PMCAComplexTaskTeam(PMCATeamFactory):
         for team_info in triage_result.get("team"):
             swarm_team_name = team_info.get("name")
             swarm_team_description = team_info.get("description")
+
             swarm_team = await PMCASwarm.create(
                 self._ctx, swarm_team_name, swarm_team_description
             )
-            self._participants.append(swarm_team.team)
+
+            swarm_wrapper = PMCASwarmWrapper(
+                self._ctx,
+                swarm_team,
+                swarm_name_to_snake(swarm_team_name),
+                swarm_team_description,
+            )
+
+            self._participants.append(swarm_wrapper)
 
     def _build_team(self) -> Team:
         return SelectorGroupChat(

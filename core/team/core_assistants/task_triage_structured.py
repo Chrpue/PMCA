@@ -19,7 +19,7 @@ class PMCATriageStructured(PMCAAssistantMetadata):
 
     ability: AbilityType = AbilityType.DEFAULT
 
-    tools_type: Literal["workbench", "tools", "none"] = "workbench"
+    tools_type: Literal["workbench", "tools", "none"] = "none"
 
     required_mcp_keys: List[str] = []
     tools: List[Any] = []
