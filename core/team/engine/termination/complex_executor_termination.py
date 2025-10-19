@@ -37,18 +37,23 @@ class PMCAComplexExecutorTermination:
 
         text_mention_termination = [
             TextMentionTermination(item.value)
-            for item in PMCARoutingMessages.triage_termination()
+            for item in PMCARoutingMessages.complex_executor_termination()
         ] or []
-        terminations = [
-            max_turns_termination,
-            *text_mention_termination,
-        ]
-        active = [t for t in terminations if t is not None]
 
-        if not active:
-            return None
-        if len(active) == 1:
-            return active[0]
-        return reduce(operator.or_, active) & SourceMatchTermination(
+        text_mention_termination_or = (
+            reduce(operator.or_, text_mention_termination)
+            if text_mention_termination
+            else None
+        )
+
+        orchestrator_only = SourceMatchTermination(
             [PMCACoreAssistants.ORCHESTRATOR.value]
         )
+
+        if text_mention_termination_or is None:
+            return max_turns_termination
+        else:
+            # (Max) OR ( TextMention AND SourceMatch(orchestrator) )
+            return max_turns_termination | (
+                text_mention_termination_or & orchestrator_only
+            )

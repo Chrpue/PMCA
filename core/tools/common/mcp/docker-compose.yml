@@ -1,10 +1,10 @@
 services:
-  assistants-emitter:
+  assistant-emitter:
     build:
       context: .
       dockerfile: Dockerfile
-    image: PMCA/assistants-emitter:latest
-    container_name: assistants-emitter
+    image: PMCA/assistant-emitter:latest
+    container_name: assistant-emitter
     ports:
       - "11000:8000"
     restart: unless-stopped

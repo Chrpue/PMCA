@@ -13,6 +13,7 @@ from typing import (
     Optional,
     Sequence,
     Union,
+    Iterator,
 )
 
 from autogen_agentchat.base import ChatAgent, Team, TaskResult
@@ -29,6 +30,42 @@ from loguru import logger
 from base.runtime.task_context import PMCATaskContext
 from core.team.core_assistants import PMCAUserProxy
 from core.team.engine.run_mode import dispatch_run_mode
+from .mode import consume_console, consume_service
+
+
+class _DualUseStream:
+    """
+    一个既可 await 又可 async-for 的包装器：
+    - async-for：透传底层异步生成器（不消费），用于流式上下文。
+    - await：根据 ctx.task_env.INTERACTION_MODE 消费整条流并返回 TaskResult。
+    """
+
+    def __init__(
+        self,
+        *,
+        stream: AsyncGenerator,
+        ctx: PMCATaskContext,
+    ) -> None:
+        self._stream = stream
+        self._ctx = ctx
+        self._consumed = False
+
+    def __aiter__(self):
+        return self._stream.__aiter__()
+
+    def __await__(self) -> Iterator[Any]:
+        async def _consume():
+            if self._consumed:
+                raise RuntimeError("This stream has already been consumed.")
+            self._consumed = True
+
+            mode = self._ctx.task_env.INTERACTION_MODE.lower()
+
+            if mode == "service":
+                return await consume_service(self._stream)
+            return await consume_console(self._stream)
+
+        return _consume().__await__()
 
 
 def default_callable(
@@ -151,7 +188,6 @@ class PMCATeamFactory(ABC):
 
         return await self.discuss(task=None, **kwargs)
 
-    @dispatch_run_mode
     async def run(
         self,
         *,
@@ -179,33 +215,18 @@ class PMCATeamFactory(ABC):
         self,
         *,
         task: Optional[Union[str, BaseChatMessage, Sequence[BaseChatMessage]]] = None,
-        background: Optional[bool] = None,
-        custom_callable: Optional[Callable] = None,
         output_task_messages: bool = True,
-        mode: Optional[str] = None,
         **kwargs: Any,
     ) -> Any:
         """
-        高级入口，负责从环境变量和参数中确定最终的运行配置。
+        单一入口：返回一个 _DualUseStream
+        - 在流式上下文：async for item in awaitable_stream: ...（不消费，外层自行处理）
+        - 在非流式上下文：result = await awaitable_stream（内部根据 ctx.task_env.INTERACTION_MODE 消费后返回 TaskResult）
         """
-
-        effective_mode = mode
-        if effective_mode is None:
-            effective_mode = self._ctx.task_env.INTERACTION_MODE or "console"
-
-        effective_background = background
-        if effective_background is None:
-            effective_background = self._ctx.task_env.RUN_BACKGROUND or False
-
-        effective_callable = custom_callable
-        if effective_mode == "service" and effective_callable is None:
-            effective_callable = default_callable
-
-        return await self.run(
+        stream = await self.run(
             task=task,
-            mode=effective_mode,
-            background=effective_background,
-            custom_callable=effective_callable,
             output_task_messages=output_task_messages,
             **kwargs,
         )
+
+        return _DualUseStream(stream=stream, ctx=self._ctx)

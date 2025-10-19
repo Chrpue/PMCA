@@ -93,7 +93,9 @@ class PMCAAssistantFactory:
                 logger.warning(f"[{assistant_name}] 缺失 MCP server keys: {missing}")
 
             params = {"workbench": workbenches} if workbenches else {"workbench": []}
-            params = merge_functional_workbenches(self.ctx, assistant_name, params)
+
+            # 弃用：先修改为Topic & Subscription
+            # params = merge_functional_workbenches(self.ctx, assistant_name, params)
 
             return params if params.get("workbench") else {}
 

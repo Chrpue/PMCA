@@ -1,6 +1,7 @@
 import asyncio
 from typing import TYPE_CHECKING
 import uuid
+from autogen_core import SingleThreadedAgentRuntime
 from loguru import logger
 from redis import asyncio as aioredis
 
@@ -87,9 +88,11 @@ class PMCARuntime:
 
         task_id = uuid.uuid4().hex[:8]
         workbench = PMCATaskWorkbenchManager.create_workbench(task_id, self.redis)
+        runtime = SingleThreadedAgentRuntime()
         task_ctx = PMCATaskContext(
             task_id=task_id,
             task_mission=mission,
+            task_runtime=runtime,
             task_env=PMCASystemEnvConfig,
             task_workbench=workbench,
             llm_factory=self.llm_factory,

@@ -16,7 +16,7 @@ from core.team.engine.termination import PMCAComplexExecutorTermination
 
 from .swarm import PMCASwarm
 from .wrapper.swarm_node import PMCASwarmWrapper
-from utils.somehandler import swarm_name_to_snake
+from utils.somehandler import swarm_name_to_snake, make_valid_identifier
 
 
 class PMCAComplexTaskTeam(PMCATeamFactory):
@@ -36,13 +36,12 @@ class PMCAComplexTaskTeam(PMCATeamFactory):
         初始化分诊环节的参与智能体（ PMCATriage 和 PMCATriageReviewer ）
         """
 
+        self._participants = []
         if not self._user_proxy:
             raise ValueError("[复杂任务节点初始化阶段] 用户代理未能正常初始化")
         self._participants.append(self._user_proxy)
 
         triage_result = await self._ctx.task_workbench.get_item("triage_result")
-
-        self._participants = []
 
         system_message = self._build_orchestrator_system_prompt(triage_result)
 
@@ -64,8 +63,9 @@ class PMCAComplexTaskTeam(PMCATeamFactory):
             swarm_wrapper = PMCASwarmWrapper(
                 self._ctx,
                 swarm_team,
-                swarm_name_to_snake(swarm_team_name),
-                swarm_team_description,
+                self._ctx.task_runtime,
+                name=make_valid_identifier(swarm_team_name),
+                description=swarm_team_description,
             )
 
             self._participants.append(swarm_wrapper)

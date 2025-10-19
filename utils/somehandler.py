@@ -1,4 +1,6 @@
 import re
+import keyword
+import unicodedata
 
 
 def swarm_name_to_snake(text: str) -> str:
@@ -18,3 +20,21 @@ def swarm_name_to_snake(text: str) -> str:
     s = re.sub(r"[\s-]+", "_", text)
     return s.lower()
 
+
+def make_valid_identifier(name: str, *, prefix: str = "agent") -> str:
+    # 1) 统一化
+    s = unicodedata.normalize("NFKC", name).strip()
+    # 2) 非 [A-Za-z0-9_] 全部替换成下划线
+    s = re.sub(r"\W", "_", s)
+    # 3) 不允许以数字开头
+    if not s or s[0].isdigit():
+        s = f"{prefix}_{s}"
+    # 4) 关键字与保留词
+    if keyword.iskeyword(s) or s in {"async", "await", "None"}:
+        s = f"{s}_agent"
+    # 5) 连续下划线压缩，首尾去下划线
+    s = re.sub(r"_+", "_", s).strip("_")
+    # 6) 兜底
+    if not s or not s.isidentifier():
+        s = f"{prefix}_agent"
+    return s

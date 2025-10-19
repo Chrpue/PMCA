@@ -29,7 +29,7 @@ WORKDIR /app
 COPY requirements.txt /app/requirements.txt
 
 # 使用国内 PyPI (清华大学) 源安装 Python 依赖
-RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # 复制应用程序代码
 COPY server/ /app/server/
@@ -38,4 +38,4 @@ COPY server/ /app/server/
 EXPOSE 8000
 
 # 使用 Uvicorn 启动 ASGI 应用 (这是您指定的正确命令)
-CMD ["uvicorn", "server.pmca_bus_server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "server.assistant_emitter:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -39,7 +39,8 @@ async def main():
     team = RoundRobinGroupChat(
         [
             user_proxy,
-            orchestrator,
+            knowledge_librarian,
+            # orchestrator,
         ]
     )
 

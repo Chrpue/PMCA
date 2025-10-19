@@ -1,94 +1,189 @@
 from __future__ import annotations
-from typing import Sequence
-from loguru import logger
 
+from typing import Sequence, AsyncGenerator, Union, Optional, Any
+
+from loguru import logger
 from autogen_agentchat.agents import BaseChatAgent
-from autogen_agentchat.base import Response, TaskResult
-from autogen_agentchat.messages import BaseChatMessage, TextMessage
+from autogen_agentchat.base import TaskResult, Response
+from autogen_agentchat.messages import (
+    BaseChatMessage,
+    BaseAgentEvent,
+    TextMessage,
+)
 from autogen_core import CancellationToken
 
 from base.runtime.task_context import PMCATaskContext
-from core.team.common.team_messages import PMCARoutingMessages
 from core.team.factory import PMCATeamFactory
+from core.team.common.team_messages import PMCARoutingMessages
+import json
+
+
+def _to_jsonable(obj: Any) -> Any:
+    """把任意对象转为 JSON 友好的类型。"""
+    # Pydantic BaseModel（如 MemoryContent 等）
+    if hasattr(obj, "model_dump") and callable(getattr(obj, "model_dump")):
+        try:
+            return obj.model_dump()
+        except Exception:
+            try:
+                # 旧版本 pydantic v1 兼容
+                return obj.dict()  # type: ignore[attr-defined]
+            except Exception:
+                return str(obj)
+
+    # 已经是 JSON-friendly
+    if isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    if isinstance(obj, dict):
+        return {str(k): _to_jsonable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_to_jsonable(v) for v in obj]
+
+    # 其他类型兜底
+    return str(obj)
+
+
+def _simplify_messages(
+    msgs: Optional[Sequence[Union[BaseAgentEvent, BaseChatMessage]]],
+) -> list[dict]:
+    """
+    将团队讨论消息轻量化，便于存储到 workbench。
+    - 仅保留 ChatMessage（事件默认跳过，避免把 token/chunk 等噪音写入）
+    - 对 content 做 JSON 化处理，解决 MemoryContent 等不可序列化问题
+    """
+    out: list[dict] = []
+    if not msgs:
+        return out
+    for m in msgs:
+        # 过滤掉事件（如需要，也可以将事件 m.to_text() 收进去）
+        if not isinstance(m, BaseChatMessage):
+            continue
+        try:
+            content = getattr(m, "content", None)
+            content = _to_jsonable(content)
+
+            created_at = getattr(m, "created_at", None)
+            created_at_str = created_at.isoformat() if created_at else None
+
+            item = {
+                "source": getattr(m, "source", None),
+                "type": getattr(m, "type", None),
+                "content": content,
+                "created_at": created_at_str,
+            }
+            out.append(_to_jsonable(item))
+        except Exception as e:
+            out.append(
+                {
+                    "source": getattr(m, "source", None),
+                    "type": getattr(m, "type", None),
+                    "content": str(getattr(m, "content", None)),
+                }
+            )
+            logger.warning(f"simplify message failed: {e}")
+    return out
 
 
 class PMCATriageTeamWrapper(BaseChatAgent):
-    """将任意团队组件包装成 ChatAgent，以便 GraphFlow 调用."""
+    """
+    分诊团队的包装器：
+    - 流式：透传中途事件；末尾仅产出路由标记
+    - 同时在末尾把本轮分诊讨论 transcript 轻量化后写入 workbench['triage_transcript']
+    - 非流式：同理，仅返回路由标记并写入 transcript
+    - 上下文连续：每一轮仅把“新增消息”作为 task 传入，团队内部维护对话状态
+    """
 
     def __init__(
         self,
         ctx: PMCATaskContext,
         team: PMCATeamFactory,
-        name: str = "",
-        description: str = "",
-    ):
+        name: str = "PMCATriageTeamWrapper",
+        description: str = "Wrapper agent for triage team",
+    ) -> None:
         super().__init__(name=name, description=description)
         self._ctx = ctx
         self._team = team
-        # 初始状态：还未给团队分配任务
-        self._is_first_call: bool = True
-        self._final_response = None
 
     @property
     def produced_message_types(self):
         return [TextMessage]
 
+    # 流式方法
+    async def on_messages_stream(
+        self,
+        messages: Sequence[BaseChatMessage],
+        cancellation_token: CancellationToken,
+    ) -> AsyncGenerator[Union[BaseAgentEvent, BaseChatMessage, Response], None]:
+        effective_task: Optional[Sequence[BaseChatMessage]] = messages or None
+        logger.debug(f"[{self.name}] triage stream start, new_messages={len(messages)}")
+
+        stream = await self._team.discuss(
+            task=effective_task,
+            output_task_messages=True,
+        )
+
+        async for item in stream:
+            if isinstance(item, TaskResult):
+                transcript = _simplify_messages(item.messages)
+
+                try:
+                    _ = json.dumps(transcript, ensure_ascii=False)
+                    await self._ctx.task_workbench.set_item(
+                        "triage_transcript", transcript
+                    )
+                    logger.debug(
+                        f"[{self.name}] stored triage_transcript ({len(transcript)})"
+                    )
+                except Exception as e:
+                    logger.warning(f"[{self.name}] store triage_transcript failed: {e}")
+
+                stop = item.stop_reason or ""
+                if PMCARoutingMessages.TRIAGE_SUCCESS.value in stop:
+                    content = PMCARoutingMessages.TRIAGE_SUCCESS.value
+                else:
+                    content = PMCARoutingMessages.TRIAGE_FAILURE.value
+
+                logger.debug(f"[{self.name}] triage stream end -> {content}")
+                yield Response(
+                    chat_message=TextMessage(source=self.name, content=content)
+                )
+            else:
+                yield item
+
+    # 非流式（少数需要一次性结果的地方）
     async def on_messages(
         self,
         messages: Sequence[BaseChatMessage],
         cancellation_token: CancellationToken,
     ) -> Response:
-        """收到新消息时调用团队运行，并返回团队的最终回复."""
-
-        # 第一次调用时，将用户消息作为任务文本；后续调用直接继续历史对话
-        task = None
-        if self._is_first_call:
-            # 找到最后一条用户消息作为任务文本
-            for msg in reversed(messages):
-                if isinstance(msg, TextMessage) and msg.source == "PMCAUserProxy":  # type: ignore
-                    task = msg.content
-                    break
-            self._is_first_call = False
-
-        task = self._ctx.task_mission
-        logger.error(task)
-
-        # 使用团队运行，并根据 ctx 配置自动选择 console/service 模式
-        task_result: TaskResult = await self._team.discuss(
-            task=task,
-            mode=self._team.ctx.task_env.INTERACTION_MODE,
-            custom_callable=None,
+        effective_task: Optional[Sequence[BaseChatMessage]] = messages or None
+        logger.debug(
+            f"[{self.name}] triage non-stream start, new_messages={len(messages)}"
         )
 
-        triage_conversation_history = task_result.messages or []
-
-        formatted_history = "对用户任务的分诊过程讨论内容：\n"
-        for msg in triage_conversation_history:
-            try:
-                msg_dict = msg.model_dump()
-                formatted_history += (
-                    f"---- 发言人：{msg_dict.get('source', '未知')} ----\n"
-                )
-                formatted_history += f"{msg_dict.get('content', '')}\n\n"
-            except Exception:
-                formatted_history += (
-                    f"---- 发言人：{getattr(msg, 'source', '未知')} ----\n"
-                )
-                formatted_history += f"{getattr(msg, 'content', '')}\n\n"
-
-        stop_reason = task_result.stop_reason or ""
-        final_content = formatted_history
-
-        if PMCARoutingMessages.TRIAGE_SUCCESS.value in stop_reason:
-            final_content += f"{PMCARoutingMessages.TRIAGE_SUCCESS.value}"
-
-        self._final_response = Response(
-            chat_message=TextMessage(source=self.name, content=final_content),
-            # inner_messages=triage_conversation_history,
+        result: TaskResult = await self._team.discuss(
+            task=effective_task,
+            output_task_messages=True,
         )
 
-        return self._final_response
+        transcript = _simplify_messages(result.messages)
+        try:
+            _ = json.dumps(transcript, ensure_ascii=False)
+            await self._ctx.task_workbench.set_item("triage_transcript", transcript)
+            logger.debug(f"[{self.name}] stored triage_transcript ({len(transcript)})")
+        except Exception as e:
+            logger.warning(f"[{self.name}] store triage_transcript failed: {e}")
+
+        stop = result.stop_reason or ""
+        if PMCARoutingMessages.TRIAGE_SUCCESS.value in stop:
+            content = PMCARoutingMessages.TRIAGE_SUCCESS.value
+        else:
+            content = PMCARoutingMessages.TRIAGE_FAILURE.value
+
+        logger.debug(f"[{self.name}] triage non-stream end -> {content}")
+        return Response(chat_message=TextMessage(source=self.name, content=content))
 
     async def on_reset(self, cancellation_token: CancellationToken) -> None:
-        """重置包装器和内部团队的状态。"""
+        logger.debug(f"[{self.name}] reset")
         await self._team.reset()
+
