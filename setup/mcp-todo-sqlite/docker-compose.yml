@@ -1,0 +1,24 @@
+services:
+  todo-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        REPO_REF: "main"
+    image: PMCA/todo-mcp-xczer:latest
+    container_name: todo-mcp-server
+    restart: unless-stopped
+    environment:
+      # 选择网络传输：sse 或 streamablehttp
+      - TRANSPORT=sse
+      - TODO_DB_PATH=/app/data/${SWARM_DB_FILE}
+    volumes:
+      - ./data:/app/data
+    # 仅本机暴露，避免对外网开放
+    ports:
+      - "127.0.0.1:11009:11009"
+    # mcp-proxy 参数：--port 暴露端口；--transport 选择协议；-- 后跟本地 stdio 服务器命令
+    command: >
+      --port 11009
+      --transport ${TRANSPORT}
+      -- node /app/dist/index.js

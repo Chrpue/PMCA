@@ -41,6 +41,7 @@ class PMCAComplexTaskExecutorWrapper(BaseChatAgent):
         )
 
         effective_task: Optional[Sequence[BaseChatMessage]] = messages or None
+        # logger.success(effective_task)
 
         stream = await complex_team.discuss(
             task=effective_task,
