@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 class PMCATaskContext:
     """
-    一个纯粹的数据容器，用于封装单个任务所需的所有上下文和资源。
+    纯粹的数据容器，用于封装单个任务所需的所有上下文和资源。
     """
 
     _runtime_started: bool = False
