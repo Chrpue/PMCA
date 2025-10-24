@@ -15,39 +15,26 @@ from autogen_core import (
 from autogen_core._agent_id import AgentId
 
 from .task_context import PMCATaskContext
+from .event.system_event import PMCAEvent
 
 
-@dataclass
-class PMCAEvent:
-    topic_type: str = "PMCA.EVENT"
-    task_id: str
+class BlackboardStorage:
+    def __init__(self, max_len: int = 100) -> None:
+        self._store: Dict[str, List[Dict[str, Any]]] = {}
+        self._max_len = max_len
 
-    def to_dict(self) -> Dict[str, Any]:
-        if is_dataclass(self):
-            return asdict(self)
-        try:
-            return self.__dict__
+    async def append(self, key: str, value: Dict[str, Any]) -> None:
+        hist = self._store.setdefault(key, [])
+        hist.append(value)
+        if len(hist) > self._max_len:
+            del hist[0 : len(hist) - self._max_len]
 
-        except Exception:
-            return {"__repr__": repr(self)}
+    async def get_all(self, key: str) -> List[Dict[str, Any]]:
+        return list(self._store.get(key, []))
 
-
-@dataclass
-class TriageSummaryEvent(PMCAEvent):
-    topic_type: str = "PMCA.TRIAGE"
-    summary: str
-    classification: Optional[Dict[str, Any]] = None
-    metadata: Optional[Dict[str, Any]] = None
-
-
-@dataclass
-class AssistantStatusEvent(PMCAEvent):
-    topic_type: str = "PMCA.ASSISTANT.STATUS"
-    assistant: str
-    message: str
-    progress: Optional[float] = None
-    need_user: bool = False
-    payload: Optional[Dict[str, Any]] = None
+    async def get_latest(self, key: str) -> Optional[Dict[str, Any]]:
+        hist = self._store.get(key)
+        return hist[-1] if hist else None
 
 
 class PMCABlackboardManager:

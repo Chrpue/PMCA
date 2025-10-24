@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Sequence, AsyncGenerator, Union, Optional, Any
 
 from loguru import logger
@@ -15,23 +16,21 @@ from autogen_core import CancellationToken
 from base.runtime.task_context import PMCATaskContext
 from core.team.factory import PMCATeamFactory
 from core.team.common.team_messages import PMCARoutingMessages
-import json
+
+from base.runtime.event import AssistantStatusEvent, TriageSummaryEvent
 
 
 def _to_jsonable(obj: Any) -> Any:
     """把任意对象转为 JSON 友好的类型。"""
-    # Pydantic BaseModel（如 MemoryContent 等）
     if hasattr(obj, "model_dump") and callable(getattr(obj, "model_dump")):
         try:
             return obj.model_dump()
         except Exception:
             try:
-                # 旧版本 pydantic v1 兼容
                 return obj.dict()  # type: ignore[attr-defined]
             except Exception:
                 return str(obj)
 
-    # 已经是 JSON-friendly
     if isinstance(obj, (str, int, float, bool)) or obj is None:
         return obj
     if isinstance(obj, dict):
@@ -39,7 +38,6 @@ def _to_jsonable(obj: Any) -> Any:
     if isinstance(obj, (list, tuple)):
         return [_to_jsonable(v) for v in obj]
 
-    # 其他类型兜底
     return str(obj)
 
 
@@ -55,7 +53,6 @@ def _simplify_messages(
     if not msgs:
         return out
     for m in msgs:
-        # 过滤掉事件（如需要，也可以将事件 m.to_text() 收进去）
         if not isinstance(m, BaseChatMessage):
             continue
         try:
@@ -140,10 +137,33 @@ class PMCATriageTeamWrapper(BaseChatAgent):
                 stop = item.stop_reason or ""
                 if PMCARoutingMessages.TRIAGE_SUCCESS.value in stop:
                     content = PMCARoutingMessages.TRIAGE_SUCCESS.value
+                    status_flag = "SUCCESS"
                 else:
                     content = PMCARoutingMessages.TRIAGE_FAILURE.value
+                    status_flag = "FAILURE"
 
                 logger.debug(f"[{self.name}] triage stream end -> {content}")
+
+                try:
+                    bb = getattr(self._ctx, "blackboard", None)
+                    task_id = getattr(self._ctx, "task_id", None)
+                    if bb and task_id:
+                        evt = AssistantStatusEvent(
+                            task_id=task_id,
+                            assistant=self.name,
+                            node="triage",
+                            stage="complete",
+                            status=status_flag,
+                            progress=1.0,
+                            need_user=False,
+                            message=f"Triage completed with status {status_flag}",
+                        )
+                        await bb.publish(evt)
+                except Exception as e:
+                    logger.warning(
+                        f"[{self.name}] publish AssistantStatusEvent failed: {e}"
+                    )
+
                 yield Response(
                     chat_message=TextMessage(source=self.name, content=content)
                 )
@@ -186,4 +206,3 @@ class PMCATriageTeamWrapper(BaseChatAgent):
     async def on_reset(self, cancellation_token: CancellationToken) -> None:
         logger.debug(f"[{self.name}] reset")
         await self._team.reset()
-

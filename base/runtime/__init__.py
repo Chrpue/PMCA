@@ -5,7 +5,7 @@ from .system_workbench import (
 )
 from .system_runtime import PMCARuntime
 from .system_blackboard import PMCABlackboardManager, PMCABlackboardRuntime
-from .system_blackboard import TriageSummaryEvent, AssistantStatusEvent
+from .blackboard_router import BlackboardCondition, RouterPolicy
 
 __all__ = [
     "PMCATaskContext",
@@ -14,6 +14,6 @@ __all__ = [
     "PMCARuntime",
     "PMCABlackboardManager",
     "PMCABlackboardRuntime",
-    "TriageSummaryEvent",
-    "AssistantStatusEvent",
+    "BlackboardCondition",
+    "RouterPolicy",
 ]
