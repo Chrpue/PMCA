@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Type
 import uuid
 from autogen_core import SingleThreadedAgentRuntime
 from loguru import logger
@@ -17,7 +17,9 @@ from core.memory.factory.mem0 import PMCAMem0LocalService
 
 from .task_context import PMCATaskContext
 from .system_workbench import PMCATaskWorkbenchManager
-import core.assistant.built_in
+from .system_blackboard import init_task_blackboard
+
+from .event.system_event import PMCAEvent
 
 
 class PMCARuntime:
@@ -89,6 +91,7 @@ class PMCARuntime:
         task_id = uuid.uuid4().hex[:8]
         workbench = PMCATaskWorkbenchManager.create_workbench(task_id, self.redis)
         runtime = SingleThreadedAgentRuntime()
+
         task_ctx = PMCATaskContext(
             task_id=task_id,
             task_mission=mission,
@@ -100,6 +103,14 @@ class PMCARuntime:
 
         assistant_factory = PMCAAssistantFactory(ctx=task_ctx)
         task_ctx.assistant_factory = assistant_factory
+
         logger.success(f"Task context [{task_id}] created successfully.")
 
         return task_ctx
+
+    async def create_task_context_with_blackboard(
+        self, mission: str, event_classes: List[Type[PMCAEvent]]
+    ) -> PMCATaskContext:
+        ctx = self.create_task_context(mission)
+        await init_task_blackboard(ctx, event_classes)
+        return ctx

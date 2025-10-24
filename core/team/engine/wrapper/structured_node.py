@@ -11,6 +11,15 @@ from autogen_agentchat.messages import BaseChatMessage, TextMessage, BaseAgentEv
 from autogen_core import CancellationToken
 
 from base.runtime import PMCATaskContext
+from base.runtime.event.system_event import (
+    TriageEvent,
+    TriageSummaryEvent,
+    AssistantStatusEvent,
+)
+from base.runtime.system_blackboard import (
+    init_task_blackboard,
+    publish_blackboard_event,
+)
 
 
 def _to_jsonable(obj: Any) -> Any:
@@ -112,7 +121,12 @@ class PMCATriageStructuredWrapper(BaseChatAgent):
         messages: Sequence[BaseChatMessage],
         cancellation_token: CancellationToken,
     ) -> AsyncGenerator[Union[BaseAgentEvent, BaseChatMessage, Response], None]:
-        # 1) 从 workbench 拉取分诊摘要作为上下文
+        # 黑板幂等
+        await init_task_blackboard(
+            self._ctx,
+            [TriageEvent, TriageSummaryEvent, AssistantStatusEvent],
+            max_inbox=1000,
+        )
         transcript = await self._ctx.task_workbench.get_item("triage_transcript")
         upstream: list[BaseChatMessage] = []
         ctx_msg = _make_context_prefix(transcript, self.name) if transcript else None
@@ -129,6 +143,48 @@ class PMCATriageStructuredWrapper(BaseChatAgent):
             if isinstance(item, Response):
                 final_text = item.chat_message.content if item.chat_message else None  # type: ignore
                 await self._parse_and_store_summary_text(final_text)
+
+                try:
+                    structured = json.loads(json_str)
+                    # 二次 JSON 化试探，确保完全可序列化（处理潜在 Pydantic 字段）
+                    _ = json.dumps(_to_jsonable(structured), ensure_ascii=False)
+                    await self._ctx.task_workbench.set_item("triage_result", structured)
+                    logger.debug(f"[{self.name}] stored triage_result")
+
+                    # 发布结构化总结事件供下游路由
+                    await publish_blackboard_event(
+                        self._ctx,
+                        TriageSummaryEvent(
+                            task_id=self._ctx.task_id,
+                            summary=structured.get("summary", ""),
+                            task_type=structured.get("task_type", "complex"),
+                            confidence=float(structured.get("confidence", 0.0)),
+                            user_intent=structured.get("intent")
+                            or structured.get("user_intent"),
+                            constraints=list(structured.get("constraints", [])),
+                            artifacts=dict(structured.get("artifacts", {})),
+                            metadata=dict(structured.get("metadata", {})),
+                        ),
+                    )
+
+                    # 发布通用助手状态事件
+                    await publish_blackboard_event(
+                        self._ctx,
+                        AssistantStatusEvent(
+                            task_id=self._ctx.task_id,
+                            assistant=self.name,
+                            node="triage_structured",
+                            stage="complete",
+                            status="OK",
+                            progress=1.0,
+                            need_user=False,
+                            message="Structured triage output ready",
+                            payload=structured,
+                        ),
+                    )
+                except json.JSONDecodeError as e:
+                    ...
+
                 yield Response(
                     chat_message=TextMessage(source=self.name, content=final_text or "")
                 )
@@ -196,4 +252,3 @@ class PMCATriageStructuredWrapper(BaseChatAgent):
             logger.error(f"[{self.name}] parse JSON failed: {e}; raw={json_str}")
         except Exception as e:
             logger.error(f"[{self.name}] store triage_result failed: {e}")
-

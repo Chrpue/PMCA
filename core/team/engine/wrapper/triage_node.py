@@ -17,7 +17,11 @@ from base.runtime.task_context import PMCATaskContext
 from core.team.factory import PMCATeamFactory
 from core.team.common.team_messages import PMCARoutingMessages
 
-from base.runtime.event import AssistantStatusEvent, TriageSummaryEvent
+from base.runtime.event import AssistantStatusEvent, TriageEvent, TriageSummaryEvent
+from base.runtime.system_blackboard import (
+    init_task_blackboard,
+    publish_blackboard_event,
+)
 
 
 def _to_jsonable(obj: Any) -> Any:
@@ -114,6 +118,13 @@ class PMCATriageTeamWrapper(BaseChatAgent):
         effective_task: Optional[Sequence[BaseChatMessage]] = messages or None
         logger.debug(f"[{self.name}] triage stream start, new_messages={len(messages)}")
 
+        # 幂等载入
+        await init_task_blackboard(
+            self._ctx,
+            [TriageEvent, TriageSummaryEvent, AssistantStatusEvent],
+            max_inbox=1000,
+        )
+
         stream = await self._team.discuss(
             task=effective_task,
             output_task_messages=True,
@@ -144,25 +155,40 @@ class PMCATriageTeamWrapper(BaseChatAgent):
 
                 logger.debug(f"[{self.name}] triage stream end -> {content}")
 
-                try:
-                    bb = getattr(self._ctx, "blackboard", None)
-                    task_id = getattr(self._ctx, "task_id", None)
-                    if bb and task_id:
-                        evt = AssistantStatusEvent(
-                            task_id=task_id,
-                            assistant=self.name,
-                            node="triage",
-                            stage="complete",
-                            status=status_flag,
-                            progress=1.0,
-                            need_user=False,
-                            message=f"Triage completed with status {status_flag}",
-                        )
-                        await bb.publish(evt)
-                except Exception as e:
-                    logger.warning(
-                        f"[{self.name}] publish AssistantStatusEvent failed: {e}"
-                    )
+                status_flag = (
+                    "SUCCESS"
+                    if PMCARoutingMessages.TRIAGE_SUCCESS.value in stop
+                    else "FAILURE"
+                )
+
+                # 发布分诊过程结束事件
+                await publish_blackboard_event(
+                    self._ctx,
+                    TriageEvent(
+                        task_id=self._ctx.task_id,
+                        stage="complete",
+                        status=status_flag,
+                        need_user=False,
+                        progress=1.0,
+                        message=f"Triage completed with status {status_flag}",
+                        payload={"stop_reason": stop},
+                    ),
+                )
+
+                # 发布通用助手状态事件
+                await publish_blackboard_event(
+                    self._ctx,
+                    AssistantStatusEvent(
+                        task_id=self._ctx.task_id,
+                        assistant=self.name,
+                        node="triage",
+                        stage="complete",
+                        status=status_flag,
+                        progress=1.0,
+                        need_user=False,
+                        message=f"Triage completed with status {status_flag}",
+                    ),
+                )
 
                 yield Response(
                     chat_message=TextMessage(source=self.name, content=content)

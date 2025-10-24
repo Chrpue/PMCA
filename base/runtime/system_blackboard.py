@@ -17,6 +17,58 @@ from autogen_core._agent_id import AgentId
 from .task_context import PMCATaskContext
 from .event.system_event import PMCAEvent
 
+# 用于在工作台存储初始化元信息
+_BLACKBOARD_META_KEY = "blackboard:__meta__"
+_MAX_BLACKBOARD_HISTORY_LEN = 500
+
+
+async def init_task_blackboard(
+    ctx: "PMCATaskContext",
+    event_classes: List[Type[PMCAEvent]],
+    *,
+    max_inbox: int = 1000,
+) -> None:
+    """
+    初始化黑板：为 ctx 创建并注册 PMCABlackboardManager。
+    event_classes: 需要订阅的事件类型列表。
+    若已初始化，则直接返回。
+    """
+    # 若已经有 manager，直接返回
+    if hasattr(ctx, "_blackboard_manager") and ctx._blackboard_manager:
+        return
+
+    manager = PMCABlackboardManager(ctx, enable_storage=True)
+    # 注册事件类型
+    for evt_cls in event_classes:
+        manager.register_event_type(evt_cls)
+    # 生成处理器（一次幂等）
+    PMCABlackboardRuntime.generate_handlers(manager._event_types)
+    # 注册运行时订阅
+    await manager.register_runtime(
+        agent_type="PMCABlackboard",
+        agent_key=ctx.task_id,
+        max_inbox=max_inbox,
+    )
+    # 挂载到 ctx 供发布使用（不写入 workbench）
+    ctx._blackboard_manager = manager
+
+
+async def publish_blackboard_event(
+    ctx: "PMCATaskContext", event_obj: PMCAEvent
+) -> None:
+    """
+    发布黑板事件：
+    - 若 blackboard 未初始化，则抛出 ValueError。
+    - 通过 PMCABlackboardManager.publish() 发布并存储。
+    """
+    manager: Optional[PMCABlackboardManager] = getattr(ctx, "_blackboard_manager", None)
+    if not manager:
+        raise ValueError(
+            "Blackboard not initialized for this context. "
+            "Call init_task_blackboard(ctx, [...]) before publishing."
+        )
+    await manager.publish(event_obj)
+
 
 class BlackboardStorage:
     def __init__(self, max_len: int = 100) -> None:

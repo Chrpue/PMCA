@@ -4,7 +4,11 @@ from .system_workbench import (
     PMCATaskWorkbench,
 )
 from .system_runtime import PMCARuntime
-from .system_blackboard import PMCABlackboardManager, PMCABlackboardRuntime
+from .system_blackboard import (
+    PMCABlackboardManager,
+    PMCABlackboardRuntime,
+    init_task_blackboard,
+)
 from .blackboard_router import BlackboardCondition, RouterPolicy
 
 __all__ = [
@@ -16,4 +20,5 @@ __all__ = [
     "PMCABlackboardRuntime",
     "BlackboardCondition",
     "RouterPolicy",
+    "init_task_blackboard",
 ]

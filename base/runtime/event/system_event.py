@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, List
 @dataclass
 class PMCAEvent:
     topic_type: str = "PMCA:EVENT"
-    task_id: str
+    task_id: str = "00000000"
 
     def to_dict(self) -> Dict[str, Any]:
         if is_dataclass(self):
@@ -22,9 +22,9 @@ class PMCAEvent:
 @dataclass
 class TriageSummaryEvent(PMCAEvent):
     topic_type: str = "PMCA:TRIAGE"
-    summary: str
-    task_type: str
-    confidence: float
+    summary: str = ""
+    task_type: str = ""
+    confidence: float = 0
     user_intent: Optional[str] = None
     constraints: List[str] = None
     artifacts: Dict[str, Any] = None
@@ -44,12 +44,40 @@ class TriageSummaryEvent(PMCAEvent):
 
 
 @dataclass
+class TriageEvent(PMCAEvent):
+    """
+    分诊过程事件：与 TriageSummaryEvent 区分，用于实时记录分诊节点的状态。
+    """
+
+    topic_type: str = "PMCA:TRIAGE:EVENT"
+    stage: str = "triage"  # 例如 collecting / summarizing 等阶段名
+    status: str = "OK"  # OK / NEED_USER / RETRY / FAILURE
+    need_user: bool = False  # 是否需要用户介入
+    user_prompt: Optional[str] = None  # 请求用户输入时的提示
+    progress: Optional[float] = None  # 进度百分比 0.0~1.0
+    message: Optional[str] = None  # 对当前阶段的说明
+    payload: Optional[Dict[str, Any]] = None  # 其他附带上下文
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "task_id": self.task_id,
+            "stage": self.stage,
+            "status": self.status,
+            "need_user": self.need_user,
+            "user_prompt": self.user_prompt,
+            "progress": self.progress,
+            "message": self.message,
+            "payload": self.payload or {},
+        }
+
+
+@dataclass
 class AssistantStatusEvent(PMCAEvent):
     topic_type: str = "PMCA:ASSISTANT:STATUS"
-    assistant: str  # 事件来源（例如 PMCAOrchestrator、SwarmMemberA）
+    assistant: str = ""  # 事件来源（例如 PMCAOrchestrator、SwarmMemberA）
     node: Optional[str] = None  # 对应 GraphFlow 节点名称或模块
-    stage: str  # 初始化 / 规划 / 执行 / 汇总 / 完成 等阶段标识
-    status: str  # OK / RETRY / NEED_USER / FAILURE / IRRECOVERABLE
+    stage: str = ""  # 初始化 / 规划 / 执行 / 汇总 / 完成 等阶段标识
+    status: str = ""  # OK / RETRY / NEED_USER / FAILURE / IRRECOVERABLE
     progress: Optional[float] = None  # 任务进度百分比（0.0~1.0）
     message: Optional[str] = None  # 对当前阶段的简要说明
     need_user: bool = False  # 是否需要用户介入
