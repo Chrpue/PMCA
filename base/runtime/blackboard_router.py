@@ -31,7 +31,7 @@ class BlackboardCondition:
 
         async def get_latest() -> Optional[Dict[str, Any]]:
             try:
-                key = f"blackboard:{self.topic_type}"
+                key = f"BLACKBOARD:{self.topic_type}"
                 return await ctx.task_workbench.get_item(key)  # type: ignore[attr-defined]
             except Exception:
                 return None

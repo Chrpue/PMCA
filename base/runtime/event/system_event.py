@@ -51,7 +51,7 @@ class TriageEvent(PMCAEvent):
 
     topic_type: str = "PMCA:TRIAGE:EVENT"
     stage: str = "triage"  # 例如 collecting / summarizing 等阶段名
-    status: str = "OK"  # OK / NEED_USER / RETRY / FAILURE
+    status: str = "SUCCESS"  # OK / NEED_USER / RETRY / FAILURE
     need_user: bool = False  # 是否需要用户介入
     user_prompt: Optional[str] = None  # 请求用户输入时的提示
     progress: Optional[float] = None  # 进度百分比 0.0~1.0

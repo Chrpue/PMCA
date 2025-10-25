@@ -19,7 +19,6 @@ from autogen_core import CancellationToken, TopicId, SingleThreadedAgentRuntime
 from base.runtime.task_context import PMCATaskContext
 from core.team.factory import PMCATeamFactory
 
-from core.team.engine.event.swarm_event import SWARMStatusEvent, SWARMFinalEvent
 from utils.somehandler import swarm_name_to_snake, make_valid_identifier
 
 

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import asyncio
-from dataclasses import dataclass, asdict, is_dataclass
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Type
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Type, TYPE_CHECKING
 
 from autogen_core import (
     RoutedAgent,
@@ -16,6 +14,9 @@ from autogen_core._agent_id import AgentId
 
 from .task_context import PMCATaskContext
 from .event.system_event import PMCAEvent
+
+if TYPE_CHECKING:
+    from base.runtime import PMCATaskContext
 
 # 用于在工作台存储初始化元信息
 _BLACKBOARD_META_KEY = "blackboard:__meta__"
@@ -34,7 +35,7 @@ async def init_task_blackboard(
     若已初始化，则直接返回。
     """
     # 若已经有 manager，直接返回
-    if hasattr(ctx, "_blackboard_manager") and ctx._blackboard_manager:
+    if hasattr(ctx, "_blackboard_manager") and ctx._blackboard_manager:  # type: ignore
         return
 
     manager = PMCABlackboardManager(ctx, enable_storage=True)
@@ -49,8 +50,7 @@ async def init_task_blackboard(
         agent_key=ctx.task_id,
         max_inbox=max_inbox,
     )
-    # 挂载到 ctx 供发布使用（不写入 workbench）
-    ctx._blackboard_manager = manager
+    ctx._blackboard_manager = manager  # type: ignore
 
 
 async def publish_blackboard_event(
@@ -128,13 +128,13 @@ class PMCABlackboardManager:
         if not self._enable_storage:
             return
         wb = self._ctx.task_workbench
-        key = f"blackboard:{pmca_event.topic_type}"
+        key = f"BLACKBOARD:{pmca_event.topic_type}"
         try:
             history: List[Dict[str, Any]] = (await wb.get_item(key)) or []
             history.append(pmca_event.to_dict())
             # Keep only the most recent 500 events per type to bound memory
-            if len(history) > 500:
-                history = history[-500:]
+            if len(history) > _MAX_BLACKBOARD_HISTORY_LEN:
+                history = history[-_MAX_BLACKBOARD_HISTORY_LEN:]
             await wb.set_item(key, history)
         except Exception as exc:
             try:
@@ -237,9 +237,17 @@ class PMCABlackboardRuntime(RoutedAgent):
             if hasattr(cls, method_name):
                 continue
 
-            async def handler(self, message: event_cls, ctx: MessageContext) -> None:  # type: ignore
-                await self._on_event_received(message, ctx)
+            def _make(evt_cls: Type[PMCAEvent]):
+                async def _handler(self, message, ctx: MessageContext) -> None:
+                    # 统一入口
+                    await self._on_event_received(message, ctx)
 
-            decorated = event(handler)
-            setattr(cls, method_name, decorated)
-            cls._generated_handlers.append(method_name)
+                # 关键：为装饰器提供可解析的类型注解
+                _handler.__annotations__ = {
+                    "message": evt_cls,  # 直接放入类型对象
+                    "ctx": MessageContext,
+                    "return": type(None),
+                }
+                return event(_handler)  # 现在装饰器能正确 get_type_hints 了
+
+            setattr(cls, method_name, _make(event_cls))

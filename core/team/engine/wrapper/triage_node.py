@@ -134,6 +134,8 @@ class PMCATriageTeamWrapper(BaseChatAgent):
             if isinstance(item, TaskResult):
                 transcript = _simplify_messages(item.messages)
 
+                logger.error(transcript)
+
                 try:
                     _ = json.dumps(transcript, ensure_ascii=False)
                     await self._ctx.task_workbench.set_item(
